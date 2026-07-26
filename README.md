@@ -1,32 +1,82 @@
-# React + TypeScript + Vite
+# Buildpilot Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Overview
 
-Currently, two official plugins are available:
+**Buildpilot Frontend** is a modern, production‑ready web interface built with **React**, **TypeScript**, and **Vite**. It provides a fast, hot‑module‑reloaded development experience while adhering to strict linting rules via **Oxlint**. The UI serves as the client side of the Buildpilot platform, enabling users to interact with AI‑assisted construction and property marketplace features.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- **Lightning‑fast development** with Vite's native HMR.
+- **Type‑safe** React components powered by TypeScript.
+- **Robust linting** using Oxlint with optional type‑aware rules.
+- **Extensible plugin architecture** – add React or SWC plugins as needed.
+- **Responsive design** that works across desktops, tablets, and mobile devices.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Requirements
 
-## Expanding the Oxlint configuration
+- **Node.js** >= 18.x
+- **npm** (or **pnpm/yarn**) for package management
+- **Git** for version control
+- **Vite** (installed automatically as a dev dependency)
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Installation
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+# Clone the repository
+git clone https://github.com/your-org/Buildpilot-frontend.git
+cd Buildpilot-frontend
+
+# Install dependencies
+npm install
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Development
+
+Start the development server with hot reloading:
+
+```bash
+npm run dev
+```
+
+Open your browser at `http://localhost:5174` (or the port shown in the console). The app will automatically reload as you edit source files.
+
+## Building for Production
+
+```bash
+npm run build
+```
+
+The optimized static assets will be emitted to the `dist/` directory, ready for deployment to any static hosting provider.
+
+## Linting & Formatting
+
+```bash
+# Run Oxlint with the default configuration
+npm run lint
+
+# Automatically fix lintable issues
+npm run lint:fix
+```
+
+To enable type‑aware linting, install the optional plugin:
+
+```bash
+npm install -D oxlint-tsgolint
+```
+
+Then update `.oxlintrc.json` as described in the documentation.
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/awesome-feature`).
+3. Write tests and ensure the lint passes.
+4. Submit a pull request with a clear description of your changes.
+
+Make sure to adhere to the existing code style and linting configuration.
+
+## License
+
+This project is licensed under the MIT License – see the `LICENSE` file for details.
