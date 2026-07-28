@@ -1,0 +1,53 @@
+=========================================
+      BUILDPILOT FRONTEND OVERVIEW       
+=========================================
+
+1. TECHNOLOGY STACK
+-------------------
+- Core Framework: React 19 (built with Vite)
+- Language: TypeScript
+- Styling: Tailwind CSS (v3.4)
+- Icons: Lucide React
+- Animations: Framer Motion & Canvas Confetti
+- Linting: Oxlint
+
+2. PROJECT STRUCTURE
+--------------------
+frontend/
+├── src/
+│   ├── assets/       - Static assets and images
+│   ├── components/   - Reusable global UI elements (Navbar, Footer, AIChatbot)
+│   ├── views/        - Main application pages (Dashboards, Estimator, Marketplace)
+│   ├── App.tsx       - Main application component & simple state-based router
+│   ├── main.tsx      - React entry point
+│   ├── index.css     - Global Tailwind styles and custom CSS
+│   └── App.css       - Application specific styles
+├── public/           - Publicly hosted assets
+├── package.json      - Project dependencies and npm scripts
+├── vite.config.ts    - Vite build configuration
+└── tailwind.config.js- Tailwind configuration and theme colors
+
+3. KEY FEATURES & VIEWS
+-----------------------
+- LandingPage: The marketing page introducing the BuildPilot platform.
+- AIEstimator: A tool to estimate building costs based on area, floors, and quality, featuring a simulated defect detector.
+- ARVisualizer: A canvas-based room visualizer allowing users to preview wall paint and floor materials.
+- Marketplace: A hub to search for professionals (Architects, Contractors) and properties.
+- Dashboards: Role-specific portals for:
+  * Clients (tracking projects, saved properties, messages).
+  * Professionals (managing leads, quotations, appointments).
+  * Admins (verifying professionals and moderating flagged posts).
+
+4. HOW TO RUN
+-------------
+- Start Development Server: `npm run dev` (runs on http://localhost:5173 by default)
+- Build for Production: `npm run build`
+- Run Linter: `npm run lint`
+
+5. CURRENT ARCHITECTURE NOTES
+-----------------------------
+- The app currently uses a simple state-based router (`currentView` in App.tsx) rather than a library like React Router.
+- Data fetching attempts to hit a local backend at `http://localhost:5000/api` but falls back gracefully to local calculations and mock data if the backend is offline.
+- Authentication is currently mocked via a role selector dropdown for demonstration and testing purposes.
+
+=========================================
