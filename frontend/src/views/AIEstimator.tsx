@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, DollarSign, Hammer, BarChart3, AlertCircle, FileText, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Cpu, IndianRupee, Hammer, BarChart3, AlertCircle, FileText, CheckCircle2, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const AIEstimator: React.FC = () => {
@@ -307,7 +307,7 @@ const AIEstimator: React.FC = () => {
               <div className="space-y-1">
                 <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Estimated Total Capital</span>
                 <p className="text-4xl sm:text-5xl font-black font-display text-white light-theme:text-brandDark-black tracking-tight">
-                  ${estimateData.totalEstimate.toLocaleString()}
+                  ₹{estimateData.totalEstimate.toLocaleString()}
                 </p>
               </div>
               <button
@@ -331,7 +331,7 @@ const AIEstimator: React.FC = () => {
                     <div key={i} className="text-xs">
                       <div className="flex justify-between font-semibold mb-1 text-gray-300 light-theme:text-gray-700">
                         <span>{item.category}</span>
-                        <span>${item.cost.toLocaleString()} ({item.percentage}%)</span>
+                        <span>₹{item.cost.toLocaleString()} ({item.percentage}%)</span>
                       </div>
                       <div className="w-full h-1.5 bg-brandDark-black rounded-full light-theme:bg-brandLight-slate overflow-hidden">
                         <div
@@ -347,7 +347,7 @@ const AIEstimator: React.FC = () => {
               {/* Quantities breakdown */}
               <div className="space-y-3.5">
                 <h4 className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-primary" />
+                  <IndianRupee className="w-3.5 h-3.5 text-primary" />
                   <span>Volume quantities (Bill of materials)</span>
                 </h4>
                 <div className="rounded-2xl border border-brandDark-border/60 bg-brandDark-black/40 p-4 space-y-2.5 text-xs light-theme:border-brandLight-border/60 light-theme:bg-white">
@@ -356,7 +356,7 @@ const AIEstimator: React.FC = () => {
                       <span className="font-semibold">{mat.name}</span>
                       <div className="text-right">
                         <span className="font-bold text-white light-theme:text-brandDark-black">{mat.qty.toLocaleString()}</span>
-                        <span className="text-[10px] text-gray-500 block">Est: ${mat.total.toLocaleString()}</span>
+                        <span className="text-[10px] text-gray-500 block">Est: ₹{mat.total.toLocaleString()}</span>
                       </div>
                     </div>
                   ))}

@@ -175,7 +175,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView }) => {
             <div className="flex-1 flex items-center px-4 py-2 last:border-0">
               <Search className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
               <div className="w-full text-left">
-                <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-wider">Budget Max ($)</label>
+                <label className="block text-[10px] text-gray-500 font-bold uppercase tracking-wider">Budget Max (₹)</label>
                 <input
                   type="number"
                   placeholder="e.g. 50000"
@@ -282,7 +282,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView }) => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 z-10 relative">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 p-10 rounded-3xl border border-brandDark-border/60 bg-brandDark-charcoal/20 glass-panel text-center light-theme:bg-brandLight-panel light-theme:border-brandLight-border">
           {[
-            { value: "$12M+", label: "Escrow Payouts Secured" },
+            { value: "₹100Cr+", label: "Escrow Payouts Secured" },
             { value: "48,000+", label: "AI Estimates Generated" },
             { value: "500+", label: "Verified Architecture Experts" },
             { value: "98.7%", label: "Platform Uptime Score" }

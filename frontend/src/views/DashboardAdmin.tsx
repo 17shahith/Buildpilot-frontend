@@ -155,8 +155,8 @@ const DashboardAdmin: React.FC = () => {
             </h3>
 
             {[
-              { label: 'Total Commissions Net', value: '$45,820', sub: 'Calculated 4% fee structure' },
-              { label: 'Weekly Platform Volume', value: '$1,142,000', sub: 'Buy, rent and builder milestones' },
+              { label: 'Total Commissions Net', value: '₹45,820', sub: 'Calculated 4% fee structure' },
+              { label: 'Weekly Platform Volume', value: '₹1,142,000', sub: 'Buy, rent and builder milestones' },
               { label: 'Transactions Active', value: '148', sub: 'In progress escrows' }
             ].map((metric, i) => (
               <div key={i} className="p-4 bg-brandDark-black/40 border border-brandDark-border rounded-xl space-y-1 text-xs light-theme:bg-white light-theme:border-brandLight-border">

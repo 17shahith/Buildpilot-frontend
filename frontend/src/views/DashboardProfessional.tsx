@@ -115,7 +115,7 @@ const DashboardProfessional: React.FC = () => {
                     <div className="flex items-center justify-between sm:justify-end gap-4 border-t border-brandDark-border sm:border-0 pt-4 sm:pt-0 light-theme:border-brandLight-border">
                       <div className="text-left sm:text-right">
                         <span className="text-[10px] text-gray-500 uppercase block font-bold">Estimated Budget</span>
-                        <span className="text-sm font-black text-white light-theme:text-brandDark-black">${lead.budget.toLocaleString()}</span>
+                        <span className="text-sm font-black text-white light-theme:text-brandDark-black">₹{lead.budget.toLocaleString()}</span>
                       </div>
                       <button
                         onClick={() => {
@@ -150,7 +150,7 @@ const DashboardProfessional: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Material Estimate ($)</label>
+                    <label className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Material Estimate (₹)</label>
                     <input
                       type="number"
                       required
@@ -164,7 +164,7 @@ const DashboardProfessional: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Labor & Site Supervision ($)</label>
+                    <label className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Labor & Site Supervision (₹)</label>
                     <input
                       type="number"
                       required
@@ -177,7 +177,7 @@ const DashboardProfessional: React.FC = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Calculated Sum Total</label>
                     <div className="w-full bg-brandDark-black border border-brandDark-border rounded-xl px-4 py-3 text-xs font-black text-primary light-theme:bg-white light-theme:border-brandLight-border">
-                      ${(Number(materialCost) + Number(laborCost)).toLocaleString() || 0} USD
+                      ₹{(Number(materialCost) + Number(laborCost)).toLocaleString() || 0} INR
                     </div>
                   </div>
                 </div>
@@ -209,8 +209,8 @@ const DashboardProfessional: React.FC = () => {
               <h2 className="text-lg font-bold text-white light-theme:text-brandDark-black font-display">Revenue & Analytics</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { label: 'YTD Earnings Net', val: '$84,500', note: '+12% vs previous quarter' },
-                  { label: 'Outstanding Invoices', val: '$12,400', note: '2 clients in billing queue' }
+                  { label: 'YTD Earnings Net', val: '₹84,500', note: '+12% vs previous quarter' },
+                  { label: 'Outstanding Invoices', val: '₹12,400', note: '2 clients in billing queue' }
                 ].map((c, i) => (
                   <div key={i} className="p-5 rounded-2xl border border-brandDark-border bg-brandDark-charcoal/60 glass-panel space-y-1.5 light-theme:bg-white light-theme:border-brandLight-border">
                     <span className="text-[10px] text-gray-500 uppercase block font-bold">{c.label}</span>

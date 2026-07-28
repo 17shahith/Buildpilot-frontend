@@ -225,7 +225,7 @@ const Marketplace: React.FC = () => {
                   <div className="flex items-center justify-between border-t border-brandDark-border/60 pt-4 mt-6 light-theme:border-brandLight-border/60">
                     <div className="space-y-0.5">
                       <span className="text-[10px] text-gray-500 uppercase block font-bold">Hourly Rate</span>
-                      <span className="text-base font-extrabold text-white light-theme:text-brandDark-black">${pro.rate}/hr</span>
+                      <span className="text-base font-extrabold text-white light-theme:text-brandDark-black">₹{pro.rate}/hr</span>
                     </div>
                     <button
                       onClick={() => setSelectedPro(pro)}
@@ -300,7 +300,7 @@ const Marketplace: React.FC = () => {
                       <div className="space-y-0.5">
                         <span className="text-[10px] text-gray-500 uppercase block font-bold">Property Valuation</span>
                         <span className="text-lg font-black text-white light-theme:text-brandDark-black">
-                          ${prop.price.toLocaleString()}
+                          ₹{prop.price.toLocaleString()}
                           {prop.type === 'Rent' && <span className="text-xs text-gray-500 font-semibold">/mo</span>}
                         </span>
                       </div>
@@ -381,7 +381,7 @@ const Marketplace: React.FC = () => {
 
                 <div className="p-3.5 bg-brandDark-black/40 rounded-xl border border-brandDark-border text-[11px] text-gray-400 light-theme:bg-brandLight-slate light-theme:border-brandLight-border flex items-center space-x-2">
                   <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>Escrow Booking Fee: <span className="font-bold text-white light-theme:text-brandDark-black">$50.00</span> (credited to total quote).</span>
+                  <span>Escrow Booking Fee: <span className="font-bold text-white light-theme:text-brandDark-black">₹50.00</span> (credited to total quote).</span>
                 </div>
 
                 <button
@@ -418,7 +418,7 @@ const Marketplace: React.FC = () => {
                     <span>{selectedProp.location}</span>
                   </p>
                 </div>
-                <span className="text-lg font-black text-primary">${selectedProp.price.toLocaleString()}</span>
+                <span className="text-lg font-black text-primary">₹{selectedProp.price.toLocaleString()}</span>
               </div>
 
               <p className="text-xs text-gray-300 light-theme:text-gray-600 leading-relaxed font-medium">

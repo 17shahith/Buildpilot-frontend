@@ -38,8 +38,8 @@ const DashboardClient: React.FC = () => {
 
   // Saved properties mock data
   const savedProps = [
-    { id: 'p1', title: 'The Obsidian Glass Villa', price: '$1,250,000', location: 'Beverly Hills, CA', image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=300&h=200' },
-    { id: 'p2', title: 'Minimalist Urban Loft', price: '$4,200/mo', location: 'SoHo, New York', image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=300&h=200' }
+    { id: 'p1', title: 'The Obsidian Glass Villa', price: '₹1,250,000', location: 'Beverly Hills, CA', image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=300&h=200' },
+    { id: 'p2', title: 'Minimalist Urban Loft', price: '₹4,200/mo', location: 'SoHo, New York', image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=300&h=200' }
   ];
 
   // Messages threads mock data
@@ -112,7 +112,7 @@ const DashboardClient: React.FC = () => {
                   <p className="text-xs text-primary font-semibold">Lead Expert: {proj.leadPro}</p>
                   <div className="pt-2">
                     <span className="text-[10px] text-gray-500 uppercase block font-bold">Escrow Budget Capital</span>
-                    <span className="text-base font-black text-white light-theme:text-brandDark-black">${proj.cost.toLocaleString()}</span>
+                    <span className="text-base font-black text-white light-theme:text-brandDark-black">₹{proj.cost.toLocaleString()}</span>
                   </div>
                 </div>
 
