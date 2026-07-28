@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Cpu, DollarSign, Hammer, BarChart3, AlertCircle, FileText, CheckCircle2, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -108,6 +108,11 @@ const AIEstimator: React.FC = () => {
       setTimeout(() => setLoadingEstimate(false), 500);
     }
   };
+
+  // Automatically recalculate estimate on form changes
+  useEffect(() => {
+    runLiveEstimate();
+  }, [area, quality, floors, type]);
 
   const triggerExport = () => {
     confetti({
