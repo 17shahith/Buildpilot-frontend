@@ -108,10 +108,21 @@ const executeRequest = async (url: string, options: RequestOptions = {}): Promis
  */
 export const api = {
   getUri(path: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || DEFAULT_BASE_URL;
-    // Clean path and ensure single slash separation
-    const cleanBase = baseUrl.replace(/\/+$/, '');
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const resolvedBase = baseUrl !== undefined && baseUrl !== '' ? baseUrl : (import.meta.env.DEV ? '' : DEFAULT_BASE_URL);
+    
+    const cleanBase = resolvedBase.replace(/\/+$/, '');
     const cleanPath = path.replace(/^\/+/, '');
+    
+    if (!cleanBase) {
+      return `/${cleanPath}`;
+    }
+    
+    // Guard against duplicate /api prefix
+    if (cleanBase.endsWith('/api') && cleanPath.startsWith('api/')) {
+      return `${cleanBase}/${cleanPath.substring(4)}`;
+    }
+    
     return `${cleanBase}/${cleanPath}`;
   },
 
