@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Cpu, ArrowUpRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '../utils/api';
 
 const AIChatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,23 +34,13 @@ const AIChatbot: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Connect to server
-      const response = await fetch('http://localhost:5000/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(prev => [...prev, { sender: 'ai', text: data.response }]);
-      } else {
-        throw new Error('API offline');
-      }
+      // Connect to server using centralized API client
+      const data = await api.post('api/chat', { message: text });
+      setMessages(prev => [...prev, { sender: 'ai', text: data.response }]);
     } catch (err) {
       // Offline fallback simulation
       setTimeout(() => {
-        let answer = "I'm currently operating in offline mode. For full rates and estimations, please start the BuildBridge local backend server on port 5000.";
+        let answer = "I'm currently operating in offline mode. Please check your network connection or make sure the production API is online.";
         const lower = text.toLowerCase();
         
         if (lower.includes('cost') || lower.includes('estimate') || lower.includes('budget')) {

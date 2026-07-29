@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Star, CheckCircle, ShieldCheck, Calendar, X, Heart } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { api } from '../utils/api';
 
 const Marketplace: React.FC = () => {
   const [tab, setTab] = useState<'pros' | 'properties'>('pros');
@@ -28,22 +29,12 @@ const Marketplace: React.FC = () => {
     setLoading(true);
     try {
       // Fetch professionals
-      const prosUrl = `http://localhost:5000/api/professionals?search=${search}&role=${filterRole}`;
-      const prosRes = await fetch(prosUrl);
-      if (prosRes.ok) {
-        const prosData = await prosRes.ok ? await prosRes.json() : [];
-        setPros(prosData);
-      } else {
-        throw new Error();
-      }
+      const prosData = await api.get(`api/professionals?search=${search}&role=${filterRole}`);
+      setPros(prosData);
 
       // Fetch properties
-      const propsUrl = `http://localhost:5000/api/properties?search=${search}`;
-      const propsRes = await fetch(propsUrl);
-      if (propsRes.ok) {
-        const propsData = await propsRes.json();
-        setProperties(propsData);
-      }
+      const propsData = await api.get(`api/properties?search=${search}`);
+      setProperties(propsData);
     } catch (err) {
       // Local Database Fallback (matching Express API mock data)
       const localPros = [

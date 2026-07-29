@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, IndianRupee, Hammer, BarChart3, AlertCircle, FileText, CheckCircle2, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { api } from '../utils/api';
 
 const AIEstimator: React.FC = () => {
   // Estimator Form States
@@ -45,28 +46,18 @@ const AIEstimator: React.FC = () => {
   const runLiveEstimate = async () => {
     setLoadingEstimate(true);
     try {
-      const response = await fetch('http://localhost:5000/api/estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area, quality, floors, type })
+      const data = await api.post('api/estimate', { area, quality, floors, type });
+      // format materials to include calculation total
+      const materials = data.materials.map((m: any) => ({
+        ...m,
+        total: Math.round(m.qty * m.unitCost)
+      }));
+      setEstimateData({
+        totalEstimate: data.totalEstimate,
+        materials,
+        breakdown: data.breakdown,
+        optimizations: data.optimizations
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        // format materials to include calculation total
-        const materials = data.materials.map((m: any) => ({
-          ...m,
-          total: Math.round(m.qty * m.unitCost)
-        }));
-        setEstimateData({
-          totalEstimate: data.totalEstimate,
-          materials,
-          breakdown: data.breakdown,
-          optimizations: data.optimizations
-        });
-      } else {
-        throw new Error('API offline');
-      }
     } catch (err) {
       // Local calculation fallback if API server is offline
       const baseRate = type === 'renovation' ? 120 : 190;
@@ -136,18 +127,8 @@ const AIEstimator: React.FC = () => {
         // Run scanner timer
         setTimeout(async () => {
           try {
-            const res = await fetch('http://localhost:5000/api/defect-detection', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ imageUrl: file.name })
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              setScanResult(data);
-            } else {
-              throw new Error();
-            }
+            const data = await api.post('api/defect-detection', { imageUrl: file.name });
+            setScanResult(data);
           } catch {
             // Local mock fallback
             setScanResult({
