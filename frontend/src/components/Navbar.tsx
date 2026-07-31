@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Briefcase, Cpu, Eye, User, ShieldCheck, Menu, X, Home } from 'lucide-react';
+import { Briefcase, Cpu, Eye, Menu, X, Home } from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;
@@ -13,7 +13,7 @@ const Navbar: React.FC<NavbarProps> = ({
   currentView,
   setCurrentView,
   role,
-  setRole,
+  setRole: _setRole,
   setMarketplaceTab,
 }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -73,38 +73,6 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Controls Area */}
           <div className="flex items-center space-x-3 sm:space-x-4">
-            {/* Simulated Role Selector (Developer Quick-Switch) */}
-            <div className="relative group">
-              <button className="flex items-center space-x-1.5 px-3 py-2.5 rounded-xl border border-brandLight-border bg-brandLight-slate text-xs font-semibold uppercase tracking-wider text-gray-700">
-                {role === 'client' && <User className="w-3.5 h-3.5 text-primary" />}
-                {role === 'pro' && <Briefcase className="w-3.5 h-3.5 text-green-500" />}
-                {role === 'admin' && <ShieldCheck className="w-3.5 h-3.5 text-yellow-500" />}
-                <span className="hidden sm:inline">{role} Portal</span>
-              </button>
-              <div className="absolute right-0 mt-2 w-48 rounded-xl glass-panel p-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 shadow-2xl z-50">
-                <button
-                  onClick={() => { setRole('client'); setCurrentView('dashboard-client'); }}
-                  className="w-full text-left px-3 py-2 text-xs font-medium rounded-lg text-gray-700 hover:bg-brandDark-black/5 flex items-center space-x-2"
-                >
-                  <User className="w-3.5 h-3.5 text-primary" />
-                  <span>Client View</span>
-                </button>
-                <button
-                  onClick={() => { setRole('pro'); setCurrentView('dashboard-pro'); }}
-                  className="w-full text-left px-3 py-2 text-xs font-medium rounded-lg text-gray-700 hover:bg-brandDark-black/5 flex items-center space-x-2"
-                >
-                  <Briefcase className="w-3.5 h-3.5 text-green-500" />
-                  <span>Professional View</span>
-                </button>
-                <button
-                  onClick={() => { setRole('admin'); setCurrentView('dashboard-admin'); }}
-                  className="w-full text-left px-3 py-2 text-xs font-medium rounded-lg text-gray-700 hover:bg-brandDark-black/5 flex items-center space-x-2"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-yellow-500" />
-                  <span>Admin View</span>
-                </button>
-              </div>
-            </div>
 
             {/* Dashboard Quick Link */}
             <button
