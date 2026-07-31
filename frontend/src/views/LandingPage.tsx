@@ -4,9 +4,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface LandingPageProps {
   setCurrentView: (view: string) => void;
+  setMarketplaceTab: (tab: 'pros' | 'properties') => void;
+  setMarketplaceSearch: (search: string) => void;
+  setMarketplaceRole: (role: string) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView }) => {
+const LandingPage: React.FC<LandingPageProps> = ({
+  setCurrentView,
+  setMarketplaceTab,
+  setMarketplaceSearch,
+  setMarketplaceRole,
+}) => {
   const [searchCategory, setSearchCategory] = useState('Architects');
   const [searchLocation, setSearchLocation] = useState('');
   const [searchBudget, setSearchBudget] = useState('');
@@ -18,6 +26,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView }) => {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (searchCategory === 'Properties') {
+      setMarketplaceTab('properties');
+      setMarketplaceRole('');
+    } else {
+      setMarketplaceTab('pros');
+      if (searchCategory === 'Architects') {
+        setMarketplaceRole('Architect');
+      } else if (searchCategory === 'Engineers') {
+        setMarketplaceRole('Engineer');
+      } else if (searchCategory === 'Contractors') {
+        setMarketplaceRole('Contractor');
+      } else {
+        setMarketplaceRole('');
+      }
+    }
+    setMarketplaceSearch(searchLocation);
     setCurrentView('marketplace');
   };
 
@@ -202,15 +226,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView }) => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 z-10 relative">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {[
-            { title: "AI Cost Estimator", desc: "Build & structural budget", color: "from-orange-500/10 to-transparent", view: "estimator", actionText: "Estimate Now" },
-            { title: "AR Visualiser", desc: "3D camera scanner", color: "from-blue-500/10 to-transparent", view: "ar", actionText: "Scan Spaces" },
-            { title: "Hire Architects", desc: "Find top design experts", color: "from-green-500/10 to-transparent", view: "marketplace", actionText: "View Directory" },
-            { title: "Explore Properties", desc: "Buy or rent local lots", color: "from-purple-500/10 to-transparent", view: "marketplace", actionText: "Search Plots" }
+            { title: "AI Cost Estimator", desc: "Build & structural budget", color: "from-orange-500/10 to-transparent", view: "estimator", actionText: "Estimate Now", tab: null, role: null },
+            { title: "AR Visualiser", desc: "3D camera scanner", color: "from-blue-500/10 to-transparent", view: "ar", actionText: "Scan Spaces", tab: null, role: null },
+            { title: "Hire Architects", desc: "Find top design experts", color: "from-green-500/10 to-transparent", view: "marketplace", actionText: "View Directory", tab: 'pros', role: 'Architect' },
+            { title: "Explore Properties", desc: "Buy or rent local lots", color: "from-purple-500/10 to-transparent", view: "marketplace", actionText: "Search Plots", tab: 'properties', role: '' }
           ].map((action, i) => (
             <motion.div
               key={i}
               whileHover={{ y: -6, borderColor: '#FF5722' }}
-              onClick={() => setCurrentView(action.view)}
+              onClick={() => {
+                if (action.view === 'marketplace') {
+                  if (action.tab) setMarketplaceTab(action.tab as any);
+                  setMarketplaceSearch('');
+                  setMarketplaceRole(action.role || '');
+                }
+                setCurrentView(action.view);
+              }}
               className="group cursor-pointer rounded-3xl p-6 border border-brandDark-border/60 bg-brandDark-charcoal/50 hover:bg-brandDark-charcoal transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-48 glass-panel light-theme:bg-brandLight-panel light-theme:border-brandLight-border"
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-30 group-hover:opacity-60 transition-opacity`}></div>

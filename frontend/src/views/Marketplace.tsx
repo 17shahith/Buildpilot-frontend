@@ -3,10 +3,23 @@ import { Search, MapPin, Star, CheckCircle, ShieldCheck, Calendar, X, Heart } fr
 import confetti from 'canvas-confetti';
 import { api } from '../utils/api';
 
-const Marketplace: React.FC = () => {
-  const [tab, setTab] = useState<'pros' | 'properties'>('pros');
-  const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState('');
+interface MarketplaceProps {
+  tab: 'pros' | 'properties';
+  setTab: (tab: 'pros' | 'properties') => void;
+  search: string;
+  setSearch: (search: string) => void;
+  filterRole: string;
+  setFilterRole: (role: string) => void;
+}
+
+const Marketplace: React.FC<MarketplaceProps> = ({
+  tab,
+  setTab,
+  search,
+  setSearch,
+  filterRole,
+  setFilterRole,
+}) => {
   const [loading, setLoading] = useState(false);
 
   // Professional profiles DB state

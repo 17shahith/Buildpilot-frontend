@@ -1,11 +1,12 @@
-import React from 'react';
-import { Briefcase, Cpu, Eye, User, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { Briefcase, Cpu, Eye, User, ShieldCheck, Menu, X } from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;
   setCurrentView: (view: string) => void;
   role: 'client' | 'pro' | 'admin';
   setRole: (role: 'client' | 'pro' | 'admin') => void;
+  setMarketplaceTab: (tab: 'pros' | 'properties') => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -13,7 +14,10 @@ const Navbar: React.FC<NavbarProps> = ({
   setCurrentView,
   role,
   setRole,
+  setMarketplaceTab,
 }) => {
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
   const navItems = [
     { id: 'landing', label: 'Home' },
     { id: 'estimator', label: 'AI Estimator', icon: <Cpu className="w-4 h-4" /> },
@@ -48,7 +52,12 @@ const Navbar: React.FC<NavbarProps> = ({
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setCurrentView(item.id)}
+                onClick={() => {
+                  if (item.id === 'marketplace') {
+                    setMarketplaceTab('pros');
+                  }
+                  setCurrentView(item.id);
+                }}
                 className={`flex items-center space-x-1 px-4 py-2 rounded-xl text-sm font-semibold tracking-wide font-display transition-all duration-250 ${
                   currentView === item.id
                     ? 'bg-primary/10 text-primary border border-primary/20 shadow-glow/10'
@@ -114,7 +123,10 @@ const Navbar: React.FC<NavbarProps> = ({
 
             {/* Consult Pro button */}
             <button
-              onClick={() => setCurrentView('marketplace')}
+              onClick={() => {
+                setMarketplaceTab('pros');
+                setCurrentView('marketplace');
+              }}
               className="relative px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-dark text-white font-semibold text-sm font-display tracking-wide shadow-glow transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] overflow-hidden group"
             >
               <span className="absolute inset-0 bg-white/20 translate-y-full transition-transform duration-300 group-hover:translate-y-0"></span>
@@ -122,9 +134,62 @@ const Navbar: React.FC<NavbarProps> = ({
                 Hire a Pro <span className="ml-1.5">→</span>
               </span>
             </button>
+
+            {/* Mobile hamburger menu toggle */}
+            <button
+              onClick={() => setIsMobileOpen(!isMobileOpen)}
+              className="flex md:hidden p-2.5 rounded-xl border border-brandLight-border bg-brandLight-slate text-gray-700 hover:border-primary/45 transition-all focus:outline-none"
+              aria-label="Toggle menu"
+            >
+              {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Drawer menu */}
+      {isMobileOpen && (
+        <div className="md:hidden border-t border-brandLight-border bg-white px-4 py-4 space-y-2 flex flex-col shadow-inner">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id === 'marketplace') {
+                  setMarketplaceTab('pros');
+                }
+                setCurrentView(item.id);
+                setIsMobileOpen(false);
+              }}
+              className={`flex items-center space-x-2.5 px-4 py-3 rounded-xl text-sm font-semibold tracking-wide font-display transition-all ${
+                currentView === item.id
+                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  : 'text-gray-600 hover:text-brandDark-black hover:bg-brandDark-black/5'
+              }`}
+            >
+              {item.icon}
+              <span className="ml-2">{item.label}</span>
+            </button>
+          ))}
+          <div className="border-t border-brandLight-border/60 my-2 pt-3 flex flex-col space-y-2">
+            {/* Dashboard Quick Link for mobile */}
+            <button
+              onClick={() => {
+                if (role === 'client') setCurrentView('dashboard-client');
+                if (role === 'pro') setCurrentView('dashboard-pro');
+                if (role === 'admin') setCurrentView('dashboard-admin');
+                setIsMobileOpen(false);
+              }}
+              className={`flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold tracking-wide font-display border transition-all ${
+                currentView.startsWith('dashboard')
+                  ? 'bg-primary text-white border-primary'
+                  : 'border-brandLight-border text-gray-700'
+              }`}
+            >
+              Dashboard Portal
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

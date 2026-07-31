@@ -13,6 +13,9 @@ import DashboardAdmin from './views/DashboardAdmin';
 function App() {
   const [currentView, setCurrentView] = useState<string>('landing');
   const [role, setRole] = useState<'client' | 'pro' | 'admin'>('client');
+  const [marketplaceTab, setMarketplaceTab] = useState<'pros' | 'properties'>('pros');
+  const [marketplaceSearch, setMarketplaceSearch] = useState<string>('');
+  const [marketplaceRole, setMarketplaceRole] = useState<string>('');
 
   // Enforce Light Theme body class injection on mount
   useEffect(() => {
@@ -23,13 +26,29 @@ function App() {
   const renderActiveView = () => {
     switch (currentView) {
       case 'landing':
-        return <LandingPage setCurrentView={setCurrentView} />;
+        return (
+          <LandingPage
+            setCurrentView={setCurrentView}
+            setMarketplaceTab={setMarketplaceTab}
+            setMarketplaceSearch={setMarketplaceSearch}
+            setMarketplaceRole={setMarketplaceRole}
+          />
+        );
       case 'estimator':
         return <AIEstimator />;
       case 'ar':
         return <ARVisualizer />;
       case 'marketplace':
-        return <Marketplace />;
+        return (
+          <Marketplace
+            tab={marketplaceTab}
+            setTab={setMarketplaceTab}
+            search={marketplaceSearch}
+            setSearch={setMarketplaceSearch}
+            filterRole={marketplaceRole}
+            setFilterRole={setMarketplaceRole}
+          />
+        );
       case 'dashboard-client':
         return <DashboardClient />;
       case 'dashboard-pro':
@@ -37,7 +56,14 @@ function App() {
       case 'dashboard-admin':
         return <DashboardAdmin />;
       default:
-        return <LandingPage setCurrentView={setCurrentView} />;
+        return (
+          <LandingPage
+            setCurrentView={setCurrentView}
+            setMarketplaceTab={setMarketplaceTab}
+            setMarketplaceSearch={setMarketplaceSearch}
+            setMarketplaceRole={setMarketplaceRole}
+          />
+        );
     }
   };
 
@@ -57,6 +83,7 @@ function App() {
           setCurrentView={setCurrentView}
           role={role}
           setRole={setRole}
+          setMarketplaceTab={setMarketplaceTab}
         />
       </div>
 
