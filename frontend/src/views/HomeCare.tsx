@@ -341,26 +341,7 @@ const HomeCare: React.FC<HomeCareProps> = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1F2937] pb-16 transition-colors duration-300">
-      
-      {/* Top Brand Banner */}
-      <div className="bg-[#0F172A] border-b border-slate-800 text-white py-5 px-6 shadow-xl sticky top-20 z-40">
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#F97316] flex items-center justify-center shadow-md">
-              <Home className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight font-display flex items-center gap-2">
-                BuildPilot HomeCare
-                <span className="text-[10px] bg-[#F97316] px-2 py-0.5 rounded-full uppercase tracking-widest font-sans font-extrabold text-white">v2.1</span>
-              </h1>
-              <p className="text-xs text-slate-400">Report the problem. Find the right professional. Get it fixed.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         
         {/* ========================================================================= */}
         {/* 1. CLIENT DASHBOARD */}
