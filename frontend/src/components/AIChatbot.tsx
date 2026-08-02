@@ -26,22 +26,26 @@ const AIChatbot: React.FC = () => {
   }, [messages, isTyping]);
 
   const handleSendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    const normalizedText = text.trim();
+    if (!normalizedText || isTyping || normalizedText.length > 2000) return;
 
     // Add user message
-    setMessages(prev => [...prev, { sender: 'user', text }]);
+    setMessages(prev => [...prev, { sender: 'user', text: normalizedText }]);
     setInput('');
     setIsTyping(true);
 
     try {
       // Connect to server using centralized API client
-      const data = await api.post('api/chat', { message: text });
-      setMessages(prev => [...prev, { sender: 'ai', text: data.response }]);
-    } catch (err) {
+      const data = await api.post('api/chat', { message: normalizedText }, { retries: 1 });
+      const responseText = typeof data?.response === 'string'
+        ? data.response.slice(0, 4000)
+        : 'The assistant returned an invalid response.';
+      setMessages(prev => [...prev, { sender: 'ai', text: responseText }]);
+    } catch {
       // Offline fallback simulation
       setTimeout(() => {
         let answer = "I'm currently operating in offline mode. Please check your network connection or make sure the production API is online.";
-        const lower = text.toLowerCase();
+         const lower = normalizedText.toLowerCase();
         
         if (lower.includes('cost') || lower.includes('estimate') || lower.includes('budget')) {
           answer = "Building cost estimates range from $120 to $250 per sqft depending on finishes. Standard construction is around $190/sqft, while luxury specs with heavy concrete/steel structure go up to $270+/sqft.";
@@ -152,11 +156,13 @@ const AIChatbot: React.FC = () => {
                 placeholder="Ask about materials, scan setup, costs..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                maxLength={2000}
+                aria-label="Message the BuildBridge Copilot"
                 className="flex-1 bg-brandDark-charcoal border border-brandDark-border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
               <button
                 type="submit"
-                disabled={!input.trim()}
+                disabled={!input.trim() || isTyping}
                 className="p-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white shadow-glow disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Send className="w-3.5 h-3.5" />

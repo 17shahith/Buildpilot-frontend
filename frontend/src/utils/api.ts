@@ -1,11 +1,12 @@
 /**
  * Centralized API client for Buildpilot Frontend
- * Connects to Express Backend at process.env.NEXT_PUBLIC_API_URL
+ * Connects to the configured backend API. The base URL is intentionally
+ * public configuration; authentication is handled by the backend session.
  */
 
-const DEFAULT_BASE_URL = 'https://buildpilot-backend-1.onrender.com';
 const TIMEOUT_MS = 10000; // 10s request timeout
 const MAX_RETRIES = 3;
+let accessToken: string | null = null;
 
 export interface RequestOptions extends RequestInit {
   timeout?: number;
@@ -62,38 +63,45 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeout: numb
  */
 const executeRequest = async (url: string, options: RequestOptions = {}): Promise<any> => {
   const { timeout = TIMEOUT_MS, retries = MAX_RETRIES, ...fetchOptions } = options;
+  const method = (fetchOptions.method || 'GET').toUpperCase();
+  const canRetry = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+  const maxAttempts = canRetry ? Math.max(1, retries) : 1;
 
   if (!isOnline()) {
     throw new APIError('You are currently offline. Please check your network connection.', 0);
   }
 
   let attempt = 0;
-  while (attempt < retries) {
+  while (attempt < maxAttempts) {
     try {
       const response = await fetchWithTimeout(url, fetchOptions, timeout);
 
       if (!response.ok) {
         // Only retry on transient server errors (5xx)
-        if (response.status >= 500 && attempt < retries - 1) {
+        if (response.status >= 500 && attempt < maxAttempts - 1) {
           attempt++;
           // Exponential backoff
           await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 500));
           continue;
         }
-        const errorText = await response.text().catch(() => '');
+        // Do not expose raw backend bodies, which may contain stack traces or
+        // infrastructure details. The UI only needs a safe status-level error.
         throw new APIError(
-          errorText || `API request failed with status ${response.status}`,
+          response.status >= 500
+            ? 'The service is temporarily unavailable. Please try again.'
+            : 'The request could not be completed. Please check your input and try again.',
           response.status
         );
       }
 
+      if (response.status === 204) return null;
       return await response.json();
     } catch (error: any) {
       if (error instanceof APIError && error.status && error.status < 500) {
         throw error; // Don't retry client errors (4xx)
       }
       attempt++;
-      if (attempt >= retries) {
+      if (attempt >= maxAttempts) {
         if (error instanceof APIError) throw error;
         throw new APIError(error.message || 'Network error occurred. Please try again.', 500);
       }
@@ -107,9 +115,18 @@ const executeRequest = async (url: string, options: RequestOptions = {}): Promis
  * Centralized API Client
  */
 export const api = {
+  setAccessToken(token: string | null): void {
+    // Keep optional bearer credentials in memory only. Persistent sessions
+    // should use an HttpOnly, Secure, SameSite cookie managed by the backend.
+    accessToken = token;
+  },
+
+  clearAccessToken(): void {
+    accessToken = null;
+  },
+
   getUri(path: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const resolvedBase = baseUrl !== undefined && baseUrl !== '' ? baseUrl : (import.meta.env.DEV ? '' : DEFAULT_BASE_URL);
+    const resolvedBase = import.meta.env.VITE_API_BASE_URL || '';
     
     const cleanBase = resolvedBase.replace(/\/+$/, '');
     const cleanPath = path.replace(/^\/+/, '');
@@ -130,10 +147,22 @@ export const api = {
     const url = this.getUri(path);
     const method = options.method || 'GET';
     const isGet = method.toUpperCase() === 'GET';
+    const headers = new Headers(options.headers);
+
+    if (accessToken) {
+      headers.set('Authorization', `Bearer ${accessToken}`);
+    }
+
+    const requestOptions: RequestOptions = {
+      ...options,
+      headers,
+      // Enables secure cookie-based sessions without exposing cookies to JS.
+      credentials: options.credentials || 'include',
+    };
 
     // Caching/Deduplication for GET requests
     if (isGet) {
-      const cacheKey = `${url}:${JSON.stringify(options.headers || {})}`;
+      const cacheKey = `${url}:${JSON.stringify([...headers.entries()])}`;
       
       // Check active cache
       const cached = responseCache.get(cacheKey);
@@ -146,7 +175,7 @@ export const api = {
         return pendingRequests.get(cacheKey);
       }
 
-      const promise = executeRequest(url, options).then((data) => {
+      const promise = executeRequest(url, requestOptions).then((data) => {
         pendingRequests.delete(cacheKey);
         // Cache if cacheTime is specified
         if (options.cacheTime && options.cacheTime > 0) {
@@ -166,7 +195,7 @@ export const api = {
     }
 
     // Direct execution for non-GET requests (POST, PUT, PATCH, DELETE)
-    return executeRequest(url, options);
+    return executeRequest(url, requestOptions);
   },
 
   async get(path: string, options: RequestOptions = {}): Promise<any> {

@@ -31,6 +31,7 @@ const HomeCare: React.FC<HomeCareProps> = () => {
   // Multi-step report form states
   const [showReportForm, setShowReportForm] = useState(false);
   const [formStep, setFormStep] = useState(1);
+  const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     serviceType: 'Plumber',
     title: '',
@@ -219,13 +220,29 @@ const HomeCare: React.FC<HomeCareProps> = () => {
   // Form submission
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.title.trim() || !formData.description.trim()) {
+      setFormError('Add a problem title and detailed description before submitting.');
+      setFormStep(2);
+      return;
+    }
+    if (!formData.buildingName.trim() || !formData.unit.trim()) {
+      setFormError('Add the building and unit details before submitting.');
+      setFormStep(3);
+      return;
+    }
+    if (!formData.isImmediate && !formData.preferredDate) {
+      setFormError('Choose a preferred service date or select immediate dispatch.');
+      setFormStep(6);
+      return;
+    }
+    setFormError(null);
     confetti({
       particleCount: 50,
       spread: 60,
       origin: { y: 0.6 }
     });
     const newReq = {
-      id: `req_${Math.floor(Math.random() * 899 + 100)}`,
+       id: `req_${crypto.randomUUID()}`,
       serviceType: formData.serviceType,
       title: formData.title || 'Untitled request',
       description: formData.description,
@@ -243,7 +260,8 @@ const HomeCare: React.FC<HomeCareProps> = () => {
     setRequests(prev => [newReq, ...prev]);
     setSelectedTrackingRequest(newReq);
     setShowReportForm(false);
-    setFormStep(1);
+     setFormStep(1);
+     setFormError(null);
     setAiAnalysis(null);
     setShowDiscovery(true);
   };
@@ -577,8 +595,9 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                               <input
                                 type="text"
                                 placeholder="Message technician..."
-                                value={chatMessage}
-                                onChange={(e) => setChatMessage(e.target.value)}
+                                 value={chatMessage}
+                                 onChange={(e) => setChatMessage(e.target.value)}
+                                 maxLength={1000}
                                 className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[11px] focus:outline-none focus:border-[#F97316]"
                               />
                               <button type="submit" className="px-3 bg-[#F97316] text-white rounded-xl text-xs font-bold">Send</button>
@@ -613,6 +632,7 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                       placeholder="Search service..."
                       value={historySearch}
                       onChange={(e) => setHistorySearch(e.target.value)}
+                      maxLength={100}
                       className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#F97316]"
                     />
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -713,7 +733,7 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                 <h3 className="text-base font-bold font-display text-slate-900">Report a Property Issue</h3>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Step {formStep} of 7</p>
               </div>
-              <button type="button" onClick={() => setShowReportForm(false)} className="p-2 border rounded-xl hover:bg-slate-100">
+               <button type="button" onClick={() => { setShowReportForm(false); setFormError(null); }} className="p-2 border rounded-xl hover:bg-slate-100">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
@@ -724,6 +744,7 @@ const HomeCare: React.FC<HomeCareProps> = () => {
             </div>
 
             <form onSubmit={handleSubmitForm} className="p-6 space-y-6">
+              {formError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{formError}</p>}
               
               {/* STEP 1: Select Service */}
               {formStep === 1 && (
@@ -770,7 +791,8 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                         type="text"
                         placeholder="e.g. Water leakage in kitchen"
                         value={formData.title}
-                        onChange={(e) => handleInputChange('title', e.target.value)}
+                        onChange={(e) => { setFormError(null); handleInputChange('title', e.target.value); }}
+                        maxLength={160}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-[#F97316]"
                         required
                       />
@@ -780,7 +802,8 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                       <textarea
                         placeholder="Describe the issue in detail to help our technicians bring correct tools..."
                         value={formData.description}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        onChange={(e) => { setFormError(null); handleInputChange('description', e.target.value); }}
+                        maxLength={4000}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-[#F97316] h-24"
                         required
                       />
@@ -825,7 +848,8 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                         type="text"
                         placeholder="e.g. Skyline Heights"
                         value={formData.buildingName}
-                        onChange={(e) => handleInputChange('buildingName', e.target.value)}
+                        onChange={(e) => { setFormError(null); handleInputChange('buildingName', e.target.value); }}
+                        maxLength={160}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none"
                       />
                     </div>
@@ -835,7 +859,8 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                         type="text"
                         placeholder="e.g. Tower B / Apt 1402"
                         value={formData.unit}
-                        onChange={(e) => handleInputChange('unit', e.target.value)}
+                        onChange={(e) => { setFormError(null); handleInputChange('unit', e.target.value); }}
+                        maxLength={80}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none"
                       />
                     </div>
@@ -846,6 +871,7 @@ const HomeCare: React.FC<HomeCareProps> = () => {
                         placeholder="e.g. 14"
                         value={formData.floor}
                         onChange={(e) => handleInputChange('floor', e.target.value)}
+                        maxLength={20}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none"
                       />
                     </div>

@@ -41,12 +41,13 @@ const AIEstimator: React.FC = () => {
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Compute live estimate client-side, updating dynamically
   const runLiveEstimate = async () => {
     setLoadingEstimate(true);
     try {
-      const data = await api.post('api/estimate', { area, quality, floors, type });
+      const data = await api.post('api/estimate', { area, quality, floors, type }, { retries: 1 });
       // format materials to include calculation total
       const materials = data.materials.map((m: any) => ({
         ...m,
@@ -58,7 +59,7 @@ const AIEstimator: React.FC = () => {
         breakdown: data.breakdown,
         optimizations: data.optimizations
       });
-    } catch (err) {
+    } catch {
       // Local calculation fallback if API server is offline
       const baseRate = type === 'renovation' ? 120 : 190;
       const qualityMultiplier = quality === 'luxury' ? 1.8 : quality === 'premium' ? 1.4 : 1.0;
@@ -118,6 +119,22 @@ const AIEstimator: React.FC = () => {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+      const maxFileSize = 10 * 1024 * 1024;
+
+      if (!allowedTypes.has(file.type)) {
+        setUploadError('Please choose a JPG, PNG, or WebP image.');
+        e.target.value = '';
+        return;
+      }
+
+      if (file.size > maxFileSize) {
+        setUploadError('Images must be 10 MB or smaller.');
+        e.target.value = '';
+        return;
+      }
+
+      setUploadError(null);
       const reader = new FileReader();
       reader.onload = () => {
         setPreviewImage(reader.result as string);
@@ -127,7 +144,9 @@ const AIEstimator: React.FC = () => {
         // Run scanner timer
         setTimeout(async () => {
           try {
-            const data = await api.post('api/defect-detection', { imageUrl: file.name });
+            const formData = new FormData();
+            formData.append('image', file, file.name);
+            const data = await api.upload('api/defect-detection', formData, { retries: 1 });
             setScanResult(data);
           } catch {
             // Local mock fallback
@@ -402,13 +421,14 @@ const AIEstimator: React.FC = () => {
                 </div>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept=".jpg,.jpeg,.png,.webp"
                   onChange={handlePhotoUpload}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
                 <button className="px-4 py-2 border border-brandDark-border hover:border-primary rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-colors light-theme:border-brandLight-border light-theme:text-gray-700">
                   Select Photo
                 </button>
+                {uploadError && <p role="alert" className="text-[10px] font-semibold text-red-500">{uploadError}</p>}
               </>
             )}
           </div>

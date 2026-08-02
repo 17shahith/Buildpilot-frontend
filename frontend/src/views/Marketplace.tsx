@@ -32,6 +32,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
   const [bookingDate, setBookingDate] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
 
   // Property Detail Modal States
   const [selectedProp, setSelectedProp] = useState<any | null>(null);
@@ -42,11 +43,13 @@ const Marketplace: React.FC<MarketplaceProps> = ({
     setLoading(true);
     try {
       // Fetch professionals
-      const prosData = await api.get(`api/professionals?search=${search}&role=${filterRole}`);
+      const prosParams = new URLSearchParams({ search: search.trim(), role: filterRole });
+      const propsParams = new URLSearchParams({ search: search.trim() });
+      const prosData = await api.get(`api/professionals?${prosParams.toString()}`);
       setPros(prosData);
 
       // Fetch properties
-      const propsData = await api.get(`api/properties?search=${search}`);
+      const propsData = await api.get(`api/properties?${propsParams.toString()}`);
       setProperties(propsData);
     } catch (err) {
       // Local Database Fallback (matching Express API mock data)
@@ -92,7 +95,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({
   // Book professional submit
   const handleConfirmBooking = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingDate) return;
+    if (!bookingDate || bookingSubmitting) return;
+    setBookingSubmitting(true);
     setBookingSuccess(true);
     confetti({
       particleCount: 50,
@@ -104,6 +108,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
       setBookingDate('');
       setBookingNotes('');
       setBookingSuccess(false);
+      setBookingSubmitting(false);
     }, 3000);
   };
 
@@ -149,6 +154,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
               placeholder={tab === 'pros' ? "Search architects, engineers, tags..." : "Search locations, loft styles..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              maxLength={100}
               className="premium-input pl-10 text-xs"
             />
             <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
@@ -379,6 +385,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
                     rows={3}
                     value={bookingNotes}
                     onChange={(e) => setBookingNotes(e.target.value)}
+                    maxLength={1000}
                     className="premium-input text-xs resize-none"
                   />
                 </div>
@@ -390,9 +397,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({
 
                 <button
                   type="submit"
+                  disabled={bookingSubmitting}
                   className="w-full py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs uppercase tracking-wider shadow-glow transition-all"
                 >
-                  Submit Inquiry Request
+                  {bookingSubmitting ? 'Submitting…' : 'Submit Inquiry Request'}
                 </button>
               </form>
             )}

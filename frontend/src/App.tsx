@@ -12,38 +12,19 @@ import DashboardAdmin from './views/DashboardAdmin';
 import HomeCare from './views/HomeCare';
 import { Lock, User, Eye, EyeOff, Info, LogOut } from 'lucide-react';
 import confetti from 'canvas-confetti';
-
-// Simple SHA-256 Hashing helper
-const hashPassword = async (pwd: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pwd);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-};
-
-// Pre-hashed passwords for demo credentials
-const DEMO_ACCOUNTS = [
-  {
-    username: 'homecare_pro',
-    // SHA-256 of "Pro@123"
-    hash: 'fd08912d9457be4f4fd8291ba91bba4f9db9bfe59cd5be3d4174957e0d546c89',
-    role: 'pro',
-    fullName: 'Technician Account'
-  },
-  {
-    username: 'homecare_admin',
-    // SHA-256 of "Admin@123"
-    hash: 'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7',
-    role: 'admin',
-    fullName: 'System Administrator'
-  }
-];
+import { api } from './utils/api';
 
 interface LoginGateProps {
-  requiredRole: 'pro' | 'admin';
-  onLoginSuccess: (user: any) => void;
+  requiredRole: 'client' | 'pro' | 'admin';
+  onLoginSuccess: (user: AuthenticatedUser) => void;
+}
+
+interface AuthenticatedUser {
+  id?: string;
+  username?: string;
+  fullName?: string;
+  role: 'client' | 'pro' | 'admin';
+  accessToken?: string;
 }
 
 const LoginGate: React.FC<LoginGateProps> = ({ requiredRole, onLoginSuccess }) => {
@@ -59,23 +40,25 @@ const LoginGate: React.FC<LoginGateProps> = ({ requiredRole, onLoginSuccess }) =
     setIsLoginLoading(true);
 
     try {
-      const enteredHash = await hashPassword(passwordInput);
-      const matched = DEMO_ACCOUNTS.find(
-        acc => acc.username === usernameInput && acc.hash === enteredHash && acc.role === requiredRole
-      );
+      const response = await api.post('api/auth/login', {
+        username: usernameInput.trim(),
+        password: passwordInput,
+      }, { retries: 1 });
+      const user = response?.user ?? response;
 
-      if (matched) {
+      if (user?.role === requiredRole) {
         confetti({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.6 }
         });
-        onLoginSuccess(matched);
+        if (user.accessToken) api.setAccessToken(user.accessToken);
+        onLoginSuccess(user as AuthenticatedUser);
       } else {
-        setLoginError(`Invalid credentials. Must match the ${requiredRole === 'admin' ? 'Admin' : 'Professional'} demo login details.`);
+        setLoginError('You are not authorized for this portal.');
       }
     } catch {
-      setLoginError('Authentication error occurred.');
+      setLoginError('Invalid credentials or unavailable authentication service.');
     } finally {
       setIsLoginLoading(false);
     }
@@ -96,23 +79,14 @@ const LoginGate: React.FC<LoginGateProps> = ({ requiredRole, onLoginSuccess }) =
           </p>
         </div>
 
-        {/* Demo Credentials Alert Banner */}
         <div className="bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl p-4 space-y-1">
           <div className="flex items-center space-x-1.5 text-xs text-[#EA580C] font-extrabold uppercase">
             <Info className="w-4 h-4" />
-            <span>Demo Credentials Required</span>
+            <span>Secure Sign In Required</span>
           </div>
-          {requiredRole === 'pro' ? (
-            <p className="text-[10px] text-slate-600 leading-relaxed font-semibold">
-              Username: <span className="font-mono text-slate-800">homecare_pro</span> <br />
-              Password: <span className="font-mono text-slate-800">Pro@123</span>
-            </p>
-          ) : (
-            <p className="text-[10px] text-slate-600 leading-relaxed font-semibold">
-              Username: <span className="font-mono text-slate-800">homecare_admin</span> <br />
-              Password: <span className="font-mono text-slate-800">Admin@123</span>
-            </p>
-          )}
+          <p className="text-[10px] text-slate-600 leading-relaxed font-semibold">
+            Sign in with an account issued by the BuildPilot backend. Portal permissions are verified server-side.
+          </p>
         </div>
 
         <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -187,8 +161,9 @@ function App() {
   const [marketplaceRole, setMarketplaceRole] = useState<string>('');
 
   // Authentication states for portals
-  const [proSession, setProSession] = useState<any | null>(null);
-  const [adminSession, setAdminSession] = useState<any | null>(null);
+  const [clientSession, setClientSession] = useState<AuthenticatedUser | null>(null);
+  const [proSession, setProSession] = useState<AuthenticatedUser | null>(null);
+  const [adminSession, setAdminSession] = useState<AuthenticatedUser | null>(null);
 
   // Listen to hash changes for simple routing
   useEffect(() => {
@@ -217,6 +192,27 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Restore a server-backed session after refresh. No credentials are stored
+  // in localStorage or sessionStorage.
+  useEffect(() => {
+    let cancelled = false;
+    api.get('api/auth/session', { retries: 1 })
+      .then((response) => {
+        const user = response?.user ?? response;
+        if (cancelled || !user?.role) return;
+        const session = user as AuthenticatedUser;
+        if (session.role === 'client') setClientSession(session);
+        if (session.role === 'pro') setProSession(session);
+        if (session.role === 'admin') setAdminSession(session);
+        setRole(session.role);
+      })
+      .catch(() => {
+        // Anonymous visitors are expected to receive a normal login gate.
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
   // Enforce Light Theme body class injection on mount
   useEffect(() => {
     document.body.classList.add('light-theme');
@@ -224,6 +220,9 @@ function App() {
 
   // Handle portal session logouts
   const handleLogout = () => {
+    void api.post('api/auth/logout', {}, { retries: 1 }).catch(() => undefined);
+    api.clearAccessToken();
+    setClientSession(null);
     setProSession(null);
     setAdminSession(null);
     setRole('client');
@@ -260,6 +259,17 @@ function App() {
       case 'homecare':
         return <HomeCare />;
       case 'dashboard-client':
+        if (!clientSession) {
+          return (
+            <LoginGate
+              requiredRole="client"
+              onLoginSuccess={(user) => {
+                setClientSession(user);
+                setRole('client');
+              }}
+            />
+          );
+        }
         return <DashboardClient />;
       case 'dashboard-pro':
         if (!proSession) {

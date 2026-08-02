@@ -4,20 +4,20 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const defaultApiUrl = mode === 'development' ? '' : 'https://buildpilot-backend-1.onrender.com';
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || env.VITE_API_BASE_URL || 'http://localhost:5000';
   return {
     plugins: [react()],
     server: {
       proxy: {
         '/api': {
-          target: 'https://buildpilot-backend-1.onrender.com',
+          target: apiProxyTarget,
           changeOrigin: true,
-          secure: false
+          secure: true
         }
       }
     },
     define: {
-      'process.env.NEXT_PUBLIC_API_URL': JSON.stringify(env.NEXT_PUBLIC_API_URL || defaultApiUrl),
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL || ''),
     }
   };
 })

@@ -25,7 +25,9 @@ const DashboardProfessional: React.FC = () => {
 
   const handleIssueQuote = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName || !materialCost || !laborCost) return;
+    const material = Number(materialCost);
+    const labor = Number(laborCost);
+    if (!clientName.trim() || !Number.isFinite(material) || !Number.isFinite(labor) || material < 0 || labor < 0) return;
     confetti({
       particleCount: 50,
       spread: 40,
@@ -146,6 +148,7 @@ const DashboardProfessional: React.FC = () => {
                       placeholder="e.g. Alice Jenkins"
                       value={clientName}
                       onChange={(e) => setClientName(e.target.value)}
+                      maxLength={120}
                       className="premium-input text-xs"
                     />
                   </div>
@@ -157,6 +160,9 @@ const DashboardProfessional: React.FC = () => {
                       placeholder="e.g. 15000"
                       value={materialCost}
                       onChange={(e) => setMaterialCost(e.target.value)}
+                      min="0"
+                      max="100000000"
+                      step="0.01"
                       className="premium-input text-xs"
                     />
                   </div>
@@ -171,6 +177,9 @@ const DashboardProfessional: React.FC = () => {
                       placeholder="e.g. 12000"
                       value={laborCost}
                       onChange={(e) => setLaborCost(e.target.value)}
+                      min="0"
+                      max="100000000"
+                      step="0.01"
                       className="premium-input text-xs"
                     />
                   </div>
@@ -189,6 +198,7 @@ const DashboardProfessional: React.FC = () => {
                     placeholder="Describe material grades, delivery dates, or structural design exclusions..."
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
+                    maxLength={2000}
                     className="premium-input text-xs resize-none"
                   />
                 </div>
