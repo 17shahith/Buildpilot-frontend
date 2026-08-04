@@ -1,5 +1,5 @@
 import { api } from '../utils/api';
-import { AuthenticatedUser } from '../types/auth';
+import type { AuthenticatedUser } from '../types/auth';
 
 export const authApi = {
   login: async (credentials: any): Promise<{ user: AuthenticatedUser }> => {

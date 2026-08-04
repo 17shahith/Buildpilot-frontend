@@ -66,17 +66,34 @@ npm install -D oxlint-tsgolint
 
 Then update `.oxlintrc.json` as described in the documentation.
 
+## Branch Strategy & CI/CD Pipeline
+
+We follow a strict branching model:
+- `main` represents production. Direct pushes are blocked.
+- `develop` is the integration branch.
+- Feature/bugfix development occurs in `feature/*` or `fix/*` branches.
+
+### CI/CD Workflow
+
+On every pull request to `main` or `develop`, a validation workflow runs:
+1. **Secret Scanning**: Runs Gitleaks to detect exposed credentials.
+2. **Quality Checks**: Resolves dependencies (`npm ci`), runs Oxlint, typechecks via TypeScript, runs placeholder unit tests, and verifies compilation.
+3. **Dependency Security**: Scans for vulnerabilities via `npm audit --audit-level=high`.
+
+Upon merging to `main` or `develop`, the **Frontend CD** workflow deploys the build artifact automatically to Vercel (using Vercel CLI and prebuilt binaries).
+
+### Environment Management
+
+A template `.env.example` is located in the `frontend/` folder. All browser-facing variables must be prefixed with `VITE_` (e.g., `VITE_API_BASE_URL`). Do not store secrets or backend credentials here.
+
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/awesome-feature`).
-3. Write tests and ensure the lint passes.
-4. Submit a pull request with a clear description of your changes.
-
-Make sure to adhere to the existing code style and linting configuration.
+1. Create a branch from `develop`.
+2. Ensure `npm run lint`, `npm run typecheck`, and `npm run build` pass successfully.
+3. Submit a pull request targeting `develop`.
 
 ## License
 
 This project is licensed under the MIT License – see the `LICENSE` file for details.
+
