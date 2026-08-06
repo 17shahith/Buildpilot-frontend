@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, IndianRupee, Hammer, BarChart3, AlertCircle, FileText, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Cpu, IndianRupee, Hammer, BarChart3, AlertCircle, FileText, CheckCircle2, RefreshCw, Sparkles, TrendingUp, Info } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../utils/api';
+
+const segmentColors = [
+  '#FF5722', // Excavation & Foundations
+  '#3B82F6', // Structural Frame & Pillars
+  '#10B981', // Brickwork & Plastering
+  '#F59E0B', // Flooring & Tiling
+  '#8B5CF6', // Electrical, Plumbing & HVAC
+  '#EC4899', // Finishing & Painting
+];
 
 const AIEstimator: React.FC = () => {
   // Estimator Form States
@@ -11,7 +20,16 @@ const AIEstimator: React.FC = () => {
   const [floors, setFloors] = useState<number>(1);
   const [loadingEstimate, setLoadingEstimate] = useState<boolean>(false);
 
-  // Estimator Output states (loaded with defaults)
+  // Custom rates and quantities overrides
+  const [customRates, setCustomRates] = useState<Record<string, number>>({});
+  const [customQtys, setCustomQtys] = useState<Record<string, number>>({});
+
+  // Active Tab state
+  const [activeTab, setActiveTab] = useState<'visual' | 'materials' | 'optimizations'>('visual');
+  // Donut chart active segment hover state
+  const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
+
+  // Estimator Output states
   const [estimateData, setEstimateData] = useState({
     totalEstimate: 295000,
     materials: [
@@ -48,15 +66,29 @@ const AIEstimator: React.FC = () => {
     setLoadingEstimate(true);
     try {
       const data = await api.post('api/estimate', { area, quality, floors, type }, { retries: 1 });
-      // format materials to include calculation total
-      const materials = data.materials.map((m: any) => ({
-        ...m,
-        total: Math.round(m.qty * m.unitCost)
+      const materials = data.materials.map((m: any) => {
+        const qty = customQtys[m.name] !== undefined ? customQtys[m.name] : m.qty;
+        const unitCost = customRates[m.name] !== undefined ? customRates[m.name] : m.unitCost;
+        return {
+          ...m,
+          qty,
+          unitCost,
+          total: Math.round(qty * unitCost)
+        };
+      });
+
+      const totalMaterialCost = materials.reduce((acc: number, curr: any) => acc + curr.total, 0);
+      const totalEstimate = data.totalEstimate + (totalMaterialCost - data.materials.reduce((acc: number, curr: any) => acc + Math.round(curr.qty * curr.unitCost), 0));
+
+      const breakdown = data.breakdown.map((item: any) => ({
+        ...item,
+        cost: Math.round(totalEstimate * (item.percentage / 100))
       }));
+
       setEstimateData({
-        totalEstimate: data.totalEstimate,
+        totalEstimate: Math.max(0, Math.round(totalEstimate)),
         materials,
-        breakdown: data.breakdown,
+        breakdown,
         optimizations: data.optimizations
       });
     } catch {
@@ -72,7 +104,28 @@ const AIEstimator: React.FC = () => {
         { name: 'Sand (tons)', qty: Math.round(area * 0.15 * qualityMultiplier), unitCost: 45, total: 0 },
         { name: 'Aggregate (tons)', qty: Math.round(area * 0.18 * qualityMultiplier), unitCost: 55, total: 0 },
         { name: 'Paint (litres)', qty: Math.round(area * 0.8 * (quality === 'luxury' ? 1.5 : 1)), unitCost: 8, total: 0 }
-      ].map(m => ({ ...m, total: Math.round(m.qty * m.unitCost) }));
+      ].map(m => {
+        const qty = customQtys[m.name] !== undefined ? customQtys[m.name] : m.qty;
+        const unitCost = customRates[m.name] !== undefined ? customRates[m.name] : m.unitCost;
+        return {
+          ...m,
+          qty,
+          unitCost,
+          total: Math.round(qty * unitCost)
+        };
+      });
+
+      const totalMaterialCost = materials.reduce((acc, curr) => acc + curr.total, 0);
+      const defaultMaterialCost = [
+        { qty: Math.round(area * 0.4 * qualityMultiplier), unitCost: 12 },
+        { qty: Math.round(area * 45 * qualityMultiplier), unitCost: 0.65 },
+        { qty: Number((area * 0.007 * qualityMultiplier).toFixed(2)), unitCost: 1100 },
+        { qty: Math.round(area * 0.15 * qualityMultiplier), unitCost: 45 },
+        { qty: Math.round(area * 0.18 * qualityMultiplier), unitCost: 55 },
+        { qty: Math.round(area * 0.8 * (quality === 'luxury' ? 1.5 : 1)), unitCost: 8 }
+      ].reduce((acc, curr) => acc + Math.round(curr.qty * curr.unitCost), 0);
+
+      const finalEstimatedCost = estimatedCost + (totalMaterialCost - defaultMaterialCost);
 
       const breakdown = [
         { category: 'Excavation & Foundations', percentage: 15, cost: 0 },
@@ -83,11 +136,11 @@ const AIEstimator: React.FC = () => {
         { category: 'Finishing & Painting', percentage: 10, cost: 0 }
       ].map(item => ({
         ...item,
-        cost: Math.round(estimatedCost * (item.percentage / 100))
+        cost: Math.round(finalEstimatedCost * (item.percentage / 100))
       }));
 
       setEstimateData({
-        totalEstimate: Math.round(estimatedCost),
+        totalEstimate: Math.max(0, Math.round(finalEstimatedCost)),
         materials,
         breakdown,
         optimizations: [
@@ -104,7 +157,20 @@ const AIEstimator: React.FC = () => {
   // Automatically recalculate estimate on form changes
   useEffect(() => {
     runLiveEstimate();
-  }, [area, quality, floors, type]);
+  }, [area, quality, floors, type, customRates, customQtys]);
+
+  const handleRateChange = (name: string, rate: number) => {
+    setCustomRates(prev => ({ ...prev, [name]: rate }));
+  };
+
+  const handleQtyChange = (name: string, qty: number) => {
+    setCustomQtys(prev => ({ ...prev, [name]: qty }));
+  };
+
+  const resetCustomizations = () => {
+    setCustomRates({});
+    setCustomQtys({});
+  };
 
   const triggerExport = () => {
     confetti({
@@ -169,14 +235,33 @@ const AIEstimator: React.FC = () => {
     }
   };
 
+  // SVG Donut Calculations
+  const radius = 50;
+  const circumference = 2 * Math.PI * radius;
+  let accumulatedPercentage = 0;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+      {/* Custom Styles for scanner animation */}
+      <style>{`
+        @keyframes scanLaser {
+          0% { top: 0%; opacity: 0.8; }
+          50% { top: 100%; opacity: 1; }
+          100% { top: 0%; opacity: 0.8; }
+        }
+        .laser-line {
+          animation: scanLaser 2s infinite linear;
+        }
+      `}</style>
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-brandDark-border pb-6 light-theme:border-brandLight-border">
         <div className="space-y-1">
           <h1 className="text-3xl font-extrabold font-display text-white light-theme:text-brandDark-black flex items-center space-x-2">
-            <Cpu className="w-8 h-8 text-primary" />
-            <span>AI Estimator & Quotation Suite</span>
+            <Cpu className="w-8 h-8 text-primary animate-pulse-slow" />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 light-theme:from-brandDark-black light-theme:to-gray-600">
+              AI Estimator & Quotation Suite
+            </span>
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 font-medium light-theme:text-gray-500">
             Generate itemized bill of quantities, calculate raw material volumes, and scan structural site defects.
@@ -198,15 +283,25 @@ const AIEstimator: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* INPUTS COLUMN */}
         <div className="space-y-6">
-          <div className="p-6 rounded-3xl border border-brandDark-border/60 bg-brandDark-charcoal/40 glass-panel space-y-6 light-theme:bg-brandLight-panel light-theme:border-brandLight-border">
-            <h3 className="text-white light-theme:text-brandDark-black font-bold text-base font-display pb-3 border-b border-brandDark-border/40 flex items-center space-x-2">
-              <Hammer className="w-4 h-4 text-primary" />
-              <span>Project Blueprint Settings</span>
+          <div className="p-6 rounded-3xl border border-brandDark-border/60 bg-brandDark-charcoal/40 glass-panel space-y-6 light-theme:bg-brandLight-panel light-theme:border-brandLight-border shadow-xl">
+            <h3 className="text-white light-theme:text-brandDark-black font-bold text-base font-display pb-3 border-b border-brandDark-border/40 flex items-center justify-between">
+              <span className="flex items-center space-x-2">
+                <Hammer className="w-4 h-4 text-primary" />
+                <span>Project Blueprint Settings</span>
+              </span>
+              {(Object.keys(customRates).length > 0 || Object.keys(customQtys).length > 0) && (
+                <button
+                  onClick={resetCustomizations}
+                  className="text-[10px] text-primary hover:underline font-bold"
+                >
+                  Reset Custom Rates
+                </button>
+              )}
             </h3>
 
             {/* Project Type */}
             <div className="space-y-2">
-              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Project Type</label>
+              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Project Type</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'new', label: 'New Build' },
@@ -217,7 +312,7 @@ const AIEstimator: React.FC = () => {
                     onClick={() => { setType(opt.id as any); }}
                     className={`py-2.5 rounded-xl text-xs font-bold transition-all border ${
                       type === opt.id
-                        ? 'bg-primary/10 text-primary border-primary/40'
+                        ? 'bg-primary/15 text-primary border-primary/40 shadow-glow'
                         : 'bg-brandDark-black border-brandDark-border text-gray-400 hover:text-white light-theme:bg-white light-theme:border-brandLight-border light-theme:text-gray-600'
                     }`}
                   >
@@ -240,7 +335,7 @@ const AIEstimator: React.FC = () => {
                 step="50"
                 value={area}
                 onChange={(e) => setArea(Number(e.target.value))}
-                className="w-full h-1 bg-brandDark-black rounded-lg appearance-none cursor-pointer accent-primary"
+                className="w-full h-1 bg-brandDark-black light-theme:bg-brandLight-slate rounded-lg appearance-none cursor-pointer accent-primary"
               />
               <div className="flex justify-between text-[10px] text-gray-500">
                 <span>300 sqft</span>
@@ -250,7 +345,7 @@ const AIEstimator: React.FC = () => {
 
             {/* Material Quality */}
             <div className="space-y-2">
-              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Material Finish Standard</label>
+              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Material Finish Standard</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'standard', label: 'Standard' },
@@ -262,7 +357,7 @@ const AIEstimator: React.FC = () => {
                     onClick={() => setQuality(opt.id as any)}
                     className={`py-2.5 rounded-xl text-xs font-bold transition-all border ${
                       quality === opt.id
-                        ? 'bg-primary/10 text-primary border-primary/40'
+                        ? 'bg-primary/15 text-primary border-primary/40 shadow-glow'
                         : 'bg-brandDark-black border-brandDark-border text-gray-400 hover:text-white light-theme:bg-white light-theme:border-brandLight-border light-theme:text-gray-600'
                     }`}
                   >
@@ -274,11 +369,11 @@ const AIEstimator: React.FC = () => {
 
             {/* Floor Count */}
             <div className="space-y-2">
-              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Number of Floors</label>
+              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Number of Floors</label>
               <select
                 value={floors}
                 onChange={(e) => setFloors(Number(e.target.value))}
-                className="premium-input text-xs"
+                className="premium-input text-xs light-theme:bg-white light-theme:border-brandLight-border"
               >
                 <option value="1">1 Story (Single Floor)</option>
                 <option value="2">2 Stories (Duplex)</option>
@@ -300,8 +395,8 @@ const AIEstimator: React.FC = () => {
         {/* OUTPUTS COLUMN (span 2) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Main Budget Card */}
-          <div className="p-6 rounded-3xl border border-brandDark-border bg-brandDark-charcoal text-white relative overflow-hidden glass-panel light-theme:bg-brandLight-panel light-theme:border-brandLight-border">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-radial-gradient from-primary/10 to-transparent filter blur-2xl"></div>
+          <div className="p-6 rounded-3xl border border-brandDark-border bg-brandDark-charcoal text-white relative overflow-hidden glass-panel light-theme:bg-brandLight-panel light-theme:border-brandLight-border shadow-xl">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-radial-gradient from-primary/10 to-transparent filter blur-2xl pointer-events-none"></div>
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-brandDark-border/60 pb-5 light-theme:border-brandLight-border/60">
               <div className="space-y-1">
@@ -319,71 +414,235 @@ const AIEstimator: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              {/* Category list */}
-              <div className="space-y-3.5">
-                <h4 className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
-                  <BarChart3 className="w-3.5 h-3.5 text-primary" />
-                  <span>Cost breakdown segments</span>
-                </h4>
-                <div className="space-y-2.5">
-                  {estimateData.breakdown.map((item, i) => (
-                    <div key={i} className="text-xs">
-                      <div className="flex justify-between font-semibold mb-1 text-gray-300 light-theme:text-gray-700">
-                        <span>{item.category}</span>
-                        <span>₹{item.cost.toLocaleString()} ({item.percentage}%)</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-brandDark-black rounded-full light-theme:bg-brandLight-slate overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{ width: `${item.percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quantities breakdown */}
-              <div className="space-y-3.5">
-                <h4 className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
-                  <IndianRupee className="w-3.5 h-3.5 text-primary" />
-                  <span>Volume quantities (Bill of materials)</span>
-                </h4>
-                <div className="rounded-2xl border border-brandDark-border/60 bg-brandDark-black/40 p-4 space-y-2.5 text-xs light-theme:border-brandLight-border/60 light-theme:bg-white">
-                  {estimateData.materials.map((mat, i) => (
-                    <div key={i} className="flex justify-between items-center text-gray-300 light-theme:text-gray-700">
-                      <span className="font-semibold">{mat.name}</span>
-                      <div className="text-right">
-                        <span className="font-bold text-white light-theme:text-brandDark-black">{mat.qty.toLocaleString()}</span>
-                        <span className="text-[10px] text-gray-500 block">Est: ₹{mat.total.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {/* TAB SELECTOR HEADER */}
+            <div className="flex border-b border-brandDark-border/40 mt-6 light-theme:border-brandLight-border">
+              <button
+                onClick={() => setActiveTab('visual')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-1.5 ${
+                  activeTab === 'visual'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-400 hover:text-white light-theme:hover:text-brandDark-black'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Visual Breakdown</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('materials')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-1.5 ${
+                  activeTab === 'materials'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-400 hover:text-white light-theme:hover:text-brandDark-black'
+                }`}
+              >
+                <IndianRupee className="w-4 h-4" />
+                <span>Material Quantities</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('optimizations')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-1.5 ${
+                  activeTab === 'optimizations'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-400 hover:text-white light-theme:hover:text-brandDark-black'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>AI Suggestions</span>
+              </button>
             </div>
 
-            {/* Smart budget suggestion notes */}
-            <div className="mt-6 p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-2">
-              <h5 className="text-xs font-bold text-primary flex items-center space-x-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>AI Budget Optimization suggestions</span>
-              </h5>
-              <ul className="list-disc list-inside text-[11px] text-gray-400 light-theme:text-gray-500 space-y-1 leading-relaxed">
-                {estimateData.optimizations.map((opt, i) => (
-                  <li key={i}>{opt}</li>
-                ))}
-              </ul>
+            {/* TAB CONTENTS */}
+            <div className="mt-6">
+              {/* TAB 1: VISUAL BREAKDOWN (Donut Chart & Bars) */}
+              {activeTab === 'visual' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center animate-fade-in">
+                  {/* SVG Donut Chart */}
+                  <div className="flex flex-col items-center justify-center relative">
+                    <svg viewBox="0 0 160 160" className="w-48 h-48 sm:w-56 sm:h-56 transform -rotate-90">
+                      {estimateData.breakdown.map((item, idx) => {
+                        const strokeDasharray = `${circumference}`;
+                        const strokeDashoffset = circumference - (item.percentage / 100) * circumference;
+                        const rotation = (accumulatedPercentage / 100) * 360;
+                        accumulatedPercentage += item.percentage;
+                        const isHovered = hoveredSegment === idx;
+
+                        return (
+                          <circle
+                            key={idx}
+                            cx="80"
+                            cy="80"
+                            r={radius}
+                            fill="transparent"
+                            stroke={segmentColors[idx]}
+                            strokeWidth={isHovered ? 18 : 14}
+                            strokeDasharray={strokeDasharray}
+                            strokeDashoffset={strokeDashoffset}
+                            transform={`rotate(${rotation} 80 80)`}
+                            className="transition-all duration-300 cursor-pointer origin-center"
+                            onMouseEnter={() => setHoveredSegment(idx)}
+                            onMouseLeave={() => setHoveredSegment(null)}
+                          />
+                        );
+                      })}
+                      {/* Inner circle to make it look like a donut */}
+                      <circle cx="80" cy="80" r="38" fill="rgb(15, 15, 17)" className="light-theme:fill-white" />
+                    </svg>
+
+                    {/* Donut Center text */}
+                    <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                      {hoveredSegment !== null ? (
+                        <>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
+                            {estimateData.breakdown[hoveredSegment].category.split(' ')[0]}
+                          </span>
+                          <span className="text-sm font-black text-primary">
+                            {estimateData.breakdown[hoveredSegment].percentage}%
+                          </span>
+                          <span className="text-[10px] font-semibold text-white light-theme:text-brandDark-black">
+                            ₹{estimateData.breakdown[hoveredSegment].cost.toLocaleString()}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Total Budget</span>
+                          <span className="text-xs font-black text-white light-theme:text-brandDark-black">
+                            ₹{(estimateData.totalEstimate / 100000).toFixed(2)}L
+                          </span>
+                          <span className="text-[8px] font-bold text-primary">Interactive Graph</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progressive Bar Details */}
+                  <div className="space-y-3.5">
+                    <h4 className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                      <span>Cost breakdown segments</span>
+                    </h4>
+                    <div className="space-y-2.5">
+                      {estimateData.breakdown.map((item, i) => {
+                        const isHovered = hoveredSegment === i;
+                        return (
+                          <div
+                            key={i}
+                            className={`text-xs p-2 rounded-xl transition-all ${
+                              isHovered ? 'bg-primary/10 border border-primary/20 scale-[1.02]' : 'border border-transparent'
+                            }`}
+                            onMouseEnter={() => setHoveredSegment(i)}
+                            onMouseLeave={() => setHoveredSegment(null)}
+                          >
+                            <div className="flex justify-between font-semibold mb-1 text-gray-300 light-theme:text-gray-700">
+                              <span className="flex items-center space-x-2">
+                                <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: segmentColors[i] }}></span>
+                                <span>{item.category}</span>
+                              </span>
+                              <span>₹{item.cost.toLocaleString()} ({item.percentage}% )</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-brandDark-black rounded-full light-theme:bg-brandLight-slate overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${item.percentage}%`,
+                                  backgroundColor: segmentColors[i]
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: INTERACTIVE MATERIALS TABLE */}
+              {activeTab === 'materials' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                      <Info className="w-3.5 h-3.5 text-primary" />
+                      <span>Volume quantities (Customize Rates & Volumes)</span>
+                    </h4>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-2xl border border-brandDark-border/60 bg-brandDark-black/40 light-theme:border-brandLight-border/60 light-theme:bg-white shadow-inner">
+                    <table className="min-w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-brandDark-border/60 light-theme:border-brandLight-border text-gray-400 uppercase tracking-wider text-[9px] font-bold">
+                          <th className="p-4">Material Name</th>
+                          <th className="p-4">Est. Quantity</th>
+                          <th className="p-4">Rate (₹)</th>
+                          <th className="p-4 text-right">Total (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {estimateData.materials.map((mat, i) => (
+                          <tr key={i} className="border-b border-brandDark-border/30 light-theme:border-brandLight-border/30 hover:bg-brandDark-charcoal/50 light-theme:hover:bg-brandLight-slate/30 transition-colors">
+                            <td className="p-4 font-semibold text-gray-300 light-theme:text-gray-700">{mat.name}</td>
+                            <td className="p-4">
+                              <input
+                                type="number"
+                                value={mat.qty}
+                                onChange={(e) => handleQtyChange(mat.name, Number(e.target.value))}
+                                className="w-20 bg-brandDark-black/80 light-theme:bg-brandLight-slate border border-brandDark-border light-theme:border-brandLight-border rounded px-2 py-1 text-white light-theme:text-brandDark-black font-bold text-center"
+                              />
+                            </td>
+                            <td className="p-4">
+                              <input
+                                type="number"
+                                value={mat.unitCost}
+                                onChange={(e) => handleRateChange(mat.name, Number(e.target.value))}
+                                className="w-20 bg-brandDark-black/80 light-theme:bg-brandLight-slate border border-brandDark-border light-theme:border-brandLight-border rounded px-2 py-1 text-white light-theme:text-brandDark-black font-bold text-center"
+                              />
+                            </td>
+                            <td className="p-4 text-right font-black text-white light-theme:text-brandDark-black">
+                              ₹{mat.total.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: AI OPTIMIZATIONS */}
+              {activeTab === 'optimizations' && (
+                <div className="space-y-4 animate-fade-in">
+                  <h4 className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span>AI Budget Optimization suggestions</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {estimateData.optimizations.map((opt, i) => (
+                      <div key={i} className="p-4 rounded-2xl bg-primary/5 border border-primary/10 hover:border-primary/30 transition-all flex flex-col justify-between space-y-3">
+                        <div className="flex items-start space-x-2">
+                          <span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">
+                            {i + 1}
+                          </span>
+                          <p className="text-[11px] text-gray-300 light-theme:text-gray-600 leading-relaxed font-semibold">
+                            {opt}
+                          </p>
+                        </div>
+                        <div className="text-[9px] text-primary/80 font-bold flex items-center space-x-1 self-end uppercase">
+                          <span>Verified tip</span>
+                          <CheckCircle2 className="w-3 h-3" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* SECTION 2: AI DEFECT DETECTOR */}
-      <div className="p-8 rounded-3xl border border-brandDark-border bg-brandDark-charcoal/30 glass-panel space-y-8 light-theme:bg-brandLight-panel light-theme:border-brandLight-border">
+      <div className="p-8 rounded-3xl border border-brandDark-border bg-brandDark-charcoal/30 glass-panel space-y-8 light-theme:bg-brandLight-panel light-theme:border-brandLight-border shadow-xl">
         <div className="max-w-2xl">
-          <span className="inline-block px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider mb-2">
+          <span className="inline-block px-2.5 py-1 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider mb-2 animate-pulse">
             Computer Vision Beta
           </span>
           <h2 className="text-2xl font-extrabold font-display text-white light-theme:text-brandDark-black">
@@ -396,23 +655,36 @@ const AIEstimator: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           {/* Uploader panel */}
-          <div className="border-2 border-dashed border-brandDark-border/60 rounded-3xl p-6 bg-brandDark-black/20 text-center space-y-4 flex flex-col items-center justify-center min-h-[300px] relative overflow-hidden light-theme:border-brandLight-border/60">
+          <div className="border-2 border-dashed border-brandDark-border/60 rounded-3xl p-6 bg-brandDark-black/20 text-center space-y-4 flex flex-col items-center justify-center min-h-[320px] relative overflow-hidden light-theme:border-brandLight-border/60">
             {previewImage ? (
               <div className="absolute inset-0 w-full h-full">
                 <img src={previewImage} alt="Preview Upload" className="w-full h-full object-cover" />
                 {scanning && (
                   <div className="absolute inset-0 bg-brandDark-black/75 flex flex-col items-center justify-center p-4">
-                    <RefreshCw className="w-8 h-8 text-primary animate-spin mb-2" />
-                    <p className="text-xs font-bold uppercase text-white animate-pulse tracking-widest">Scanning structural lines...</p>
-                    <div className="w-48 h-1.5 bg-brandDark-border rounded-full mt-3 overflow-hidden">
+                    {/* Laser line overlay */}
+                    <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent laser-line z-10 shadow-glow"></div>
+                    <RefreshCw className="w-8 h-8 text-primary animate-spin mb-2 z-20" />
+                    <p className="text-xs font-bold uppercase text-white animate-pulse tracking-widest z-20">Scanning structural lines...</p>
+                    <div className="w-48 h-1.5 bg-brandDark-border rounded-full mt-3 overflow-hidden z-20">
                       <div className="h-full bg-primary rounded-full w-2/3 animate-pulse"></div>
                     </div>
+                  </div>
+                )}
+                {!scanning && scanResult && (
+                  // Bounding box overlay to simulate AI detection
+                  <div
+                    className="absolute border-2 border-red-500 bg-red-500/10 rounded-lg animate-pulse"
+                    style={{ top: '35%', left: '30%', width: '40%', height: '30%' }}
+                  >
+                    <span className="absolute -top-6 left-0 bg-red-500 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-lg">
+                      {scanResult.type} ({scanResult.confidenceRate}%)
+                    </span>
                   </div>
                 )}
               </div>
             ) : (
               <>
-                <div className="w-12 h-12 rounded-xl bg-brandDark-charcoal flex items-center justify-center text-primary border border-brandDark-border light-theme:bg-white light-theme:border-brandLight-border">
+                <div className="w-12 h-12 rounded-xl bg-brandDark-charcoal flex items-center justify-center text-primary border border-brandDark-border light-theme:bg-white light-theme:border-brandLight-border shadow-md">
                   <Cpu className="w-6 h-6 animate-pulse" />
                 </div>
                 <div className="space-y-1">
@@ -436,7 +708,7 @@ const AIEstimator: React.FC = () => {
           {/* Analysis Result panel */}
           <div className="h-full flex flex-col justify-center">
             {scanResult ? (
-              <div className="p-6 rounded-3xl border border-brandDark-border bg-brandDark-charcoal/60 space-y-4 light-theme:bg-white light-theme:border-brandLight-border animate-fade-in">
+              <div className="p-6 rounded-3xl border border-brandDark-border bg-brandDark-charcoal/60 space-y-4 light-theme:bg-white light-theme:border-brandLight-border animate-fade-in shadow-xl">
                 <div className="flex justify-between items-center border-b border-brandDark-border pb-3 light-theme:border-brandLight-border">
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center space-x-1.5">
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -452,12 +724,19 @@ const AIEstimator: React.FC = () => {
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Defect Type</span>
                     <span className="text-sm font-extrabold text-white light-theme:text-brandDark-black">{scanResult.type}</span>
                   </div>
-                  <div className="space-y-0.5">
+                  <div className="space-y-1">
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Severity Risk</span>
-                    <span className="text-sm font-extrabold text-red-500 flex items-center space-x-1">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>{scanResult.severity}</span>
-                    </span>
+                    {/* Severity Gauge */}
+                    <div className="flex items-center space-x-1">
+                      <div className="grid grid-cols-3 gap-1 w-16">
+                        <div className={`h-1.5 rounded-full ${scanResult.severity === 'Low' || scanResult.severity === 'Medium' || scanResult.severity === 'High' ? 'bg-green-500 shadow-glow' : 'bg-gray-700'}`}></div>
+                        <div className={`h-1.5 rounded-full ${scanResult.severity === 'Medium' || scanResult.severity === 'High' ? 'bg-yellow-500 shadow-glow' : 'bg-gray-700'}`}></div>
+                        <div className={`h-1.5 rounded-full ${scanResult.severity === 'High' ? 'bg-red-500 shadow-glow' : 'bg-gray-700'}`}></div>
+                      </div>
+                      <span className="text-xs font-extrabold text-white light-theme:text-brandDark-black uppercase ml-1">
+                        {scanResult.severity}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
