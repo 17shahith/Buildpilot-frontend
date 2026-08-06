@@ -221,6 +221,28 @@ const ARVisualizer: React.FC = () => {
         }
       }
 
+      // 1.5 Draw Ceiling (Ivory Color #FFFFF0)
+      ctx.beginPath();
+      ctx.moveTo(leftWallTop.x, leftWallTop.y);
+      ctx.lineTo(rightWallTop.x, rightWallTop.y);
+      ctx.lineTo(backRightTop.x, backRightTop.y);
+      ctx.lineTo(backLeftTop.x, backLeftTop.y);
+      ctx.closePath();
+      ctx.fillStyle = '#FFFFF0'; // Ivory ceiling
+      ctx.fill();
+
+      // Apply light ambiance to ceiling
+      if (lighting === 'warm') {
+        ctx.fillStyle = 'rgba(255, 120, 0, 0.08)';
+        ctx.fill();
+      } else if (lighting === 'cool') {
+        ctx.fillStyle = 'rgba(0, 150, 255, 0.05)';
+        ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
       // 2. Draw Walls (Left Wall, Right Wall, Back Wall)
       const drawWall = (p1: any, p2: any, p3: any, p4: any, color: string) => {
         ctx.beginPath();
