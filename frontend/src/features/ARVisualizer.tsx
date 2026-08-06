@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, Camera, Check, RotateCcw, Share2, Layers, Compass, Zap, Move, Download } from 'lucide-react';
+import { Eye, Camera, Check, RotateCcw, Share2, Layers, Compass, Zap, Move, Download, Pipette, Ruler } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const ARVisualizer: React.FC = () => {
   // Config state
   const [paintColor, setPaintColor] = useState<string>('#E0E0E6'); // Default light grey
   const [floorType, setFloorType] = useState<'hardwood' | 'marble' | 'carpet' | 'concrete'>('hardwood');
+  const [floorPattern, setFloorPattern] = useState<'standard' | 'herringbone' | 'grid'>('standard');
   const [lighting, setLighting] = useState<'day' | 'warm' | 'cool'>('day');
+  const [sunlightAngle, setSunlightAngle] = useState<number>(45); // Degrees (0 to 180)
   const [furniture, setFurniture] = useState<boolean>(true);
   const [furnitureType, setFurnitureType] = useState<'sofa' | 'table' | 'chair'>('sofa');
   const [furnitureScale, setFurnitureScale] = useState<number>(1.0);
   const [scanning, setScanning] = useState<boolean>(false);
   const [scanPoints, setScanPoints] = useState<number>(0);
+
+  // Ruler mode state
+  const [rulerMode, setRulerMode] = useState<boolean>(false);
+  const [rulerPoints, setRulerPoints] = useState<{ x: number; y: number }[]>([]);
 
   // Orbit states (Yaw / Pitch)
   const [yaw, setYaw] = useState<number>(142);
@@ -34,13 +40,14 @@ const ARVisualizer: React.FC = () => {
 
   // Mouse drag handlers for Orbit
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (rulerMode) return; // Ignore dragging in ruler mode
     setIsDragging(true);
     lastMouseX.current = e.clientX;
     lastMouseY.current = e.clientY;
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging) return;
+    if (rulerMode || !isDragging) return;
     const deltaX = e.clientX - lastMouseX.current;
     const deltaY = e.clientY - lastMouseY.current;
 
@@ -64,6 +71,23 @@ const ARVisualizer: React.FC = () => {
 
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!rulerMode) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const clickX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const clickY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+
+    setRulerPoints(prev => {
+      if (prev.length >= 2) {
+        return [{ x: clickX, y: clickY }];
+      } else {
+        return [...prev, { x: clickX, y: clickY }];
+      }
+    });
   };
 
   // Simulating the room scan drawing inside a loop
@@ -140,18 +164,61 @@ const ARVisualizer: React.FC = () => {
       }
       ctx.fill();
 
-      // Floor texture perspective lines
+      // Floor texture pattern perspective lines
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
-      const numFloorPlanks = 8;
-      for (let i = 0; i <= numFloorPlanks; i++) {
-        const ratio = i / numFloorPlanks;
-        const startX = backLeftBottom.x + (backRightBottom.x - backLeftBottom.x) * ratio;
-        const endX = leftWallBottom.x + (rightWallBottom.x - leftWallBottom.x) * ratio;
-        ctx.beginPath();
-        ctx.moveTo(startX, backLeftBottom.y);
-        ctx.lineTo(endX, leftWallBottom.y);
-        ctx.stroke();
+      const numFloorPlanks = 10;
+
+      if (floorPattern === 'standard') {
+        for (let i = 0; i <= numFloorPlanks; i++) {
+          const ratio = i / numFloorPlanks;
+          const startX = backLeftBottom.x + (backRightBottom.x - backLeftBottom.x) * ratio;
+          const endX = leftWallBottom.x + (rightWallBottom.x - leftWallBottom.x) * ratio;
+          ctx.beginPath();
+          ctx.moveTo(startX, backLeftBottom.y);
+          ctx.lineTo(endX, leftWallBottom.y);
+          ctx.stroke();
+        }
+      } else if (floorPattern === 'grid') {
+        // Tile Grid floor pattern
+        for (let i = 0; i <= numFloorPlanks; i++) {
+          const ratio = i / numFloorPlanks;
+          const startX = backLeftBottom.x + (backRightBottom.x - backLeftBottom.x) * ratio;
+          const endX = leftWallBottom.x + (rightWallBottom.x - leftWallBottom.x) * ratio;
+          ctx.beginPath();
+          ctx.moveTo(startX, backLeftBottom.y);
+          ctx.lineTo(endX, leftWallBottom.y);
+          ctx.stroke();
+
+          const ratioY = i / numFloorPlanks;
+          const startY = backLeftBottom.y + (leftWallBottom.y - backLeftBottom.y) * ratioY;
+          const endY = backRightBottom.y + (rightWallBottom.y - backRightBottom.y) * ratioY;
+          ctx.beginPath();
+          ctx.moveTo(backLeftBottom.x + (backRightBottom.x - backLeftBottom.x) * ratioY, startY);
+          ctx.lineTo(leftWallBottom.x + (rightWallBottom.x - leftWallBottom.x) * ratioY, endY);
+          ctx.stroke();
+        }
+      } else if (floorPattern === 'herringbone') {
+        // Herringbone planks floor pattern
+        for (let i = 0; i <= numFloorPlanks; i++) {
+          const ratio = i / numFloorPlanks;
+          const startX = backLeftBottom.x + (backRightBottom.x - backLeftBottom.x) * ratio;
+          const endX = leftWallBottom.x + (rightWallBottom.x - leftWallBottom.x) * ratio;
+          ctx.beginPath();
+          ctx.moveTo(startX, backLeftBottom.y);
+          ctx.lineTo(endX, leftWallBottom.y);
+          ctx.stroke();
+
+          // Herringbone side zigzags
+          for (let yRatio = 0.1; yRatio < 1.0; yRatio += 0.15) {
+            const px = startX + (endX - startX) * yRatio;
+            const py = backLeftBottom.y + (leftWallBottom.y - backLeftBottom.y) * yRatio;
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px + 10, py - 5);
+            ctx.stroke();
+          }
+        }
       }
 
       // 2. Draw Walls (Left Wall, Right Wall, Back Wall)
@@ -186,7 +253,30 @@ const ARVisualizer: React.FC = () => {
       // Back Wall
       drawWall(backLeftTop, backRightTop, backRightBottom, backLeftBottom, '#CCCCCC');
 
-      // 3. Draw Furniture overlay inside room coordinates
+      // 3. Draw Dynamic Shadows based on Sunlight Angle
+      const rad = (sunlightAngle * Math.PI) / 180;
+      const shadowLength = 70;
+      const shadowDx = Math.cos(rad) * shadowLength;
+      const shadowDy = Math.sin(rad) * shadowLength * 0.45; // flatten for perspective
+
+      if (furniture) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+        ctx.beginPath();
+        const bx = cx;
+        const by = cy + floorOffset - 10;
+        ctx.ellipse(bx + shadowDx * 0.4, by + shadowDy * 0.4, 45 * furnitureScale, 12 * furnitureScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Draw light angle beam direction indicator (faint orange ray)
+      ctx.strokeStyle = 'rgba(255, 87, 34, 0.06)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - shadowDx * 2, cy - floorOffset - shadowDy * 2);
+      ctx.lineTo(cx, cy + floorOffset);
+      ctx.stroke();
+
+      // 4. Draw Furniture overlay inside room coordinates
       if (furniture) {
         const fX = cx;
         const fY = cy + floorOffset - 10;
@@ -197,9 +287,9 @@ const ARVisualizer: React.FC = () => {
         ctx.scale(fScale, fScale);
 
         if (furnitureType === 'sofa') {
-          // Perspective Sofa drawing
+          // Seating Base Cushion Shadow / Front Face
           ctx.strokeStyle = '#FF5722';
-          ctx.fillStyle = 'rgba(20, 20, 25, 0.9)';
+          ctx.fillStyle = 'rgba(20, 20, 25, 0.92)';
           ctx.lineWidth = 2;
 
           // Backrest
@@ -226,6 +316,13 @@ const ARVisualizer: React.FC = () => {
           ctx.fill();
           ctx.stroke();
 
+          // Cushion division details
+          ctx.strokeStyle = 'rgba(255, 87, 34, 0.4)';
+          ctx.beginPath();
+          ctx.moveTo(0, 5);
+          ctx.lineTo(0, 45);
+          ctx.stroke();
+
           // Text overlay
           ctx.fillStyle = '#FFFFFF';
           ctx.font = 'bold 9px sans-serif';
@@ -234,7 +331,7 @@ const ARVisualizer: React.FC = () => {
         } else if (furnitureType === 'table') {
           // Dining Table
           ctx.strokeStyle = '#FF5722';
-          ctx.fillStyle = 'rgba(40, 25, 15, 0.9)';
+          ctx.fillStyle = 'rgba(45, 28, 18, 0.92)';
           ctx.lineWidth = 2;
 
           // Table Top (Isometric shape)
@@ -266,7 +363,7 @@ const ARVisualizer: React.FC = () => {
         } else {
           // Lounge Chair
           ctx.strokeStyle = '#FF5722';
-          ctx.fillStyle = 'rgba(30, 35, 45, 0.9)';
+          ctx.fillStyle = 'rgba(30, 35, 45, 0.92)';
           ctx.lineWidth = 2;
 
           // Backrest
@@ -290,7 +387,59 @@ const ARVisualizer: React.FC = () => {
         ctx.restore();
       }
 
-      // 4. Lidar Cyberpunk Scanner animation overlays
+      // 5. Draw Interactive ruler points & dimension lines
+      if (rulerPoints.length > 0) {
+        ctx.fillStyle = '#FF5722';
+        ctx.strokeStyle = '#FF5722';
+        ctx.lineWidth = 1.5;
+
+        rulerPoints.forEach((pt) => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          // pulsating outer circle
+          ctx.strokeStyle = 'rgba(255, 87, 34, 0.4)';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 8 + Math.abs(Math.sin(scanAngle) * 4), 0, Math.PI * 2);
+          ctx.stroke();
+        });
+
+        if (rulerPoints.length === 2) {
+          const pt1 = rulerPoints[0];
+          const pt2 = rulerPoints[1];
+
+          // Dashed line connecting points
+          ctx.strokeStyle = '#FF5722';
+          ctx.setLineDash([5, 3]);
+          ctx.beginPath();
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+          ctx.stroke();
+          ctx.setLineDash([]); // reset line dash
+
+          // Calculate distance mock
+          const dx = pt2.x - pt1.x;
+          const dy = pt2.y - pt1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const feet = (dist / 22).toFixed(1);
+
+          // Draw dimension bubble box
+          const mx = (pt1.x + pt2.x) / 2;
+          const my = (pt1.y + pt2.y) / 2 - 10;
+
+          ctx.fillStyle = '#FF5722';
+          ctx.beginPath();
+          ctx.roundRect(mx - 20, my - 8, 40, 16, 4);
+          ctx.fill();
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${feet}'`, mx, my + 4);
+        }
+      }
+
+      // 6. Lidar Cyberpunk Scanner animation overlays
       if (scanning) {
         scanAngle += 0.04;
         const scanY = cy + Math.sin(scanAngle) * 90;
@@ -336,7 +485,7 @@ const ARVisualizer: React.FC = () => {
         ctx.stroke();
       }
 
-      // 5. Active Auto-Measure text overlays
+      // 7. Active Auto-Measure text overlays
       ctx.fillStyle = '#FF5722';
       ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'left';
@@ -354,7 +503,7 @@ const ARVisualizer: React.FC = () => {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [paintColor, floorType, lighting, furniture, furnitureType, furnitureScale, scanning, yaw, pitch]);
+  }, [paintColor, floorType, floorPattern, lighting, sunlightAngle, furniture, furnitureType, furnitureScale, scanning, rulerMode, rulerPoints, yaw, pitch]);
 
   // Simulating start scanning action
   const handleStartScan = () => {
@@ -442,13 +591,14 @@ const ARVisualizer: React.FC = () => {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUpOrLeave}
               onMouseLeave={handleMouseUpOrLeave}
-              className="w-full h-full object-cover cursor-grab active:cursor-grabbing"
+              onClick={handleCanvasClick}
+              className={`w-full h-full object-cover ${rulerMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}`}
             />
 
             {/* Orbit Help Indicator */}
             <div className="absolute top-4 left-4 pointer-events-none bg-brandDark-charcoal/80 border border-brandDark-border text-gray-400 text-[9px] px-2 py-1 rounded-lg flex items-center space-x-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
               <Move className="w-3.5 h-3.5 text-primary" />
-              <span>Click & Drag to rotate space perspective</span>
+              <span>{rulerMode ? 'Ruler Active: Click on floor to place points' : 'Click & Drag to rotate space perspective'}</span>
             </div>
 
             {/* Scanning status badge */}
@@ -488,12 +638,16 @@ const ARVisualizer: React.FC = () => {
               onClick={() => {
                 setPaintColor('#E0E0E6');
                 setFloorType('hardwood');
+                setFloorPattern('standard');
                 setLighting('day');
+                setSunlightAngle(45);
                 setFurniture(true);
                 setFurnitureType('sofa');
                 setFurnitureScale(1.0);
                 setYaw(142);
                 setPitch(-12);
+                setRulerPoints([]);
+                setRulerMode(false);
               }}
               className="px-5 py-3 rounded-xl border border-brandDark-border bg-brandDark-charcoal text-gray-300 hover:text-white flex items-center space-x-1.5 text-xs font-semibold hover:border-primary/40 transition-all light-theme:bg-brandLight-slate light-theme:border-brandLight-border light-theme:text-gray-700"
             >
@@ -518,10 +672,10 @@ const ARVisualizer: React.FC = () => {
               <span>AR Control Deck</span>
             </h3>
 
-            {/* Wall Paint Swatches */}
+            {/* Wall Paint Swatches & Custom Picker */}
             <div className="space-y-3">
               <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Wall Paint Selection</label>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {colors.map((c, i) => (
                   <button
                     key={i}
@@ -535,12 +689,23 @@ const ARVisualizer: React.FC = () => {
                     )}
                   </button>
                 ))}
+
+                {/* Custom Color Input Swatch */}
+                <div className="relative w-8 h-8 rounded-full border border-brandDark-border hover:scale-110 transition-transform flex items-center justify-center overflow-hidden bg-gradient-to-tr from-amber-400 via-rose-500 to-indigo-500 cursor-pointer">
+                  <Pipette className="w-4 h-4 text-white pointer-events-none" />
+                  <input
+                    type="color"
+                    value={paintColor}
+                    onChange={(e) => setPaintColor(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-fullScale"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Floor Materials Selection */}
-            <div className="space-y-2.5">
-              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Floor Material</label>
+            {/* Floor Materials & Pattern Selection */}
+            <div className="space-y-3">
+              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Floor Material & Pattern</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'hardwood', label: 'Oak Hardwood' },
@@ -561,10 +726,31 @@ const ARVisualizer: React.FC = () => {
                   </button>
                 ))}
               </div>
+
+              {/* Floor Plank Pattern Selectors */}
+              <div className="grid grid-cols-3 gap-1.5 mt-2">
+                {[
+                  { id: 'standard', label: 'Planks' },
+                  { id: 'herringbone', label: 'Herringbone' },
+                  { id: 'grid', label: 'Tiles' }
+                ].map(pat => (
+                  <button
+                    key={pat.id}
+                    onClick={() => setFloorPattern(pat.id as any)}
+                    className={`py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border ${
+                      floorPattern === pat.id
+                        ? 'bg-primary/20 text-primary border-primary/30'
+                        : 'bg-brandDark-black/60 border-brandDark-border text-gray-400 hover:text-white light-theme:bg-white light-theme:border-brandLight-border'
+                    }`}
+                  >
+                    {pat.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Light Settings */}
-            <div className="space-y-2.5">
+            {/* Lighting Atmosphere & Sunlight Angle */}
+            <div className="space-y-3">
               <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Lighting Atmosphere</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -584,6 +770,59 @@ const ARVisualizer: React.FC = () => {
                     {opt.label}
                   </button>
                 ))}
+              </div>
+
+              {/* Sunlight Angle Slider */}
+              <div className="space-y-1 mt-2">
+                <div className="flex justify-between text-[10px] font-bold text-gray-400">
+                  <span>Sunlight direction angle</span>
+                  <span className="text-primary">{sunlightAngle}°</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="180"
+                  step="5"
+                  value={sunlightAngle}
+                  onChange={(e) => setSunlightAngle(Number(e.target.value))}
+                  className="w-full h-1 bg-brandDark-black light-theme:bg-brandLight-slate rounded appearance-none cursor-pointer accent-primary"
+                />
+              </div>
+            </div>
+
+            {/* Interactive Floor Ruler Mode */}
+            <div className="flex items-center justify-between pt-4 border-t border-brandDark-border/40">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-white light-theme:text-brandDark-black block flex items-center space-x-1.5">
+                  <Ruler className="w-3.5 h-3.5 text-primary" />
+                  <span>Floor Ruler Tool</span>
+                </span>
+                <span className="text-[10px] text-gray-500">Measure distances on floor grid</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {rulerPoints.length > 0 && (
+                  <button
+                    onClick={() => setRulerPoints([])}
+                    className="text-[10px] text-primary hover:underline font-bold"
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setRulerMode(!rulerMode);
+                    setRulerPoints([]);
+                  }}
+                  className={`w-11 h-6 rounded-full transition-all relative ${
+                    rulerMode ? 'bg-primary' : 'bg-brandDark-black border border-brandDark-border light-theme:bg-brandLight-slate light-theme:border-brandLight-border'
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all shadow ${
+                      rulerMode ? 'right-0.5' : 'left-0.5'
+                    }`}
+                  ></div>
+                </button>
               </div>
             </div>
 
