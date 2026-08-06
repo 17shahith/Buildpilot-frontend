@@ -5,6 +5,7 @@ import AIChatbot from './components/AIChatbot';
 import LandingPage from './features/LandingPage';
 import AIEstimator from './features/AIEstimator';
 import ARVisualizer from './features/ARVisualizer';
+import AIInteriorStudio from './features/AIInteriorStudio';
 import Marketplace from './features/Marketplace';
 import DashboardClient from './features/DashboardClient';
 import DashboardProfessional from './features/DashboardProfessional';
@@ -179,6 +180,8 @@ function App() {
         setCurrentView('estimator');
       } else if (hash === '#/ar') {
         setCurrentView('ar');
+      } else if (hash === '#/studio') {
+        setCurrentView('studio');
       } else if (hash === '#/marketplace') {
         setCurrentView('marketplace');
       } else {
@@ -245,6 +248,8 @@ function App() {
         return <AIEstimator />;
       case 'ar':
         return <ARVisualizer />;
+      case 'studio':
+        return <AIInteriorStudio />;
       case 'marketplace':
         return (
           <Marketplace

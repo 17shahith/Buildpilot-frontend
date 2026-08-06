@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Briefcase, Cpu, Eye, Menu, X, Home } from 'lucide-react';
+import { Briefcase, Cpu, Eye, Menu, X, Home, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;
@@ -22,6 +22,7 @@ const Navbar: React.FC<NavbarProps> = ({
     { id: 'landing', label: 'Home' },
     { id: 'estimator', label: 'AI Estimator', icon: <Cpu className="w-4 h-4" /> },
     { id: 'ar', label: 'AR Visualiser', icon: <Eye className="w-4 h-4" /> },
+    { id: 'studio', label: 'AI Studio', icon: <Sparkles className="w-4 h-4" /> },
     { id: 'marketplace', label: 'Marketplace', icon: <Briefcase className="w-4 h-4" /> },
     { id: 'homecare', label: 'HomeCare', icon: <Home className="w-4 h-4" /> },
   ];
