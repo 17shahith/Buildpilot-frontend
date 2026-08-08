@@ -14,18 +14,11 @@ import HomeCare from './features/HomeCare';
 import { Lock, User, Eye, EyeOff, Info, LogOut } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from './utils/api';
+import type { AuthenticatedUser } from './types/auth';
 
 interface LoginGateProps {
   requiredRole: 'client' | 'pro' | 'admin';
   onLoginSuccess: (user: AuthenticatedUser) => void;
-}
-
-interface AuthenticatedUser {
-  id?: string;
-  username?: string;
-  fullName?: string;
-  role: 'client' | 'pro' | 'admin';
-  accessToken?: string;
 }
 
 const LoginGate: React.FC<LoginGateProps> = ({ requiredRole, onLoginSuccess }) => {
@@ -46,14 +39,17 @@ const LoginGate: React.FC<LoginGateProps> = ({ requiredRole, onLoginSuccess }) =
         password: passwordInput,
       }, { retries: 1 });
       const user = response?.user ?? response;
+      const backendRole = user?.role;
+      const normalizedRole = backendRole === 'CLIENT' ? 'client' : backendRole === 'PROFESSIONAL' ? 'pro' : backendRole === 'ADMIN' ? 'admin' : backendRole;
 
-      if (user?.role === requiredRole) {
+      if (normalizedRole === requiredRole) {
         confetti({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.6 }
         });
-        if (user.accessToken) api.setAccessToken(user.accessToken);
+        if (response?.token) api.setAccessToken(response.token);
+        user.role = normalizedRole;
         onLoginSuccess(user as AuthenticatedUser);
       } else {
         setLoginError('You are not authorized for this portal.');
@@ -199,10 +195,12 @@ function App() {
   // in localStorage or sessionStorage.
   useEffect(() => {
     let cancelled = false;
-    api.get('api/auth/session', { retries: 1 })
+    api.get('api/auth/me', { retries: 1 })
       .then((response) => {
         const user = response?.user ?? response;
         if (cancelled || !user?.role) return;
+        const backendRole = user.role;
+        user.role = backendRole === 'CLIENT' ? 'client' : backendRole === 'PROFESSIONAL' ? 'pro' : backendRole === 'ADMIN' ? 'admin' : backendRole;
         const session = user as AuthenticatedUser;
         if (session.role === 'client') setClientSession(session);
         if (session.role === 'pro') setProSession(session);

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Sparkles, Sliders, Camera, Download, Save, Share2, Info,
-  Check, RefreshCw, ZoomIn, ZoomOut, UserPlus, FileText, Compass,
-  Pipette, Move, RotateCcw, Box, HelpCircle
+  Sparkles, Sliders, Camera, Download, Save, Info,
+  Check, ZoomIn, ZoomOut, UserPlus, FileText, Compass,
+  Pipette, RotateCcw, Box, Move, Bed, Sofa, UtensilsCrossed
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { motion, AnimatePresence } from 'framer-motion';
+
+type RoomType = 'living' | 'kitchen' | 'bedroom';
 
 interface MaterialMetric {
   durability: number;
@@ -26,7 +29,7 @@ const materialMetrics: Record<string, MaterialMetric> = {
 
 const AIModularStudio: React.FC = () => {
   // Config state
-  const [activeRoom, setActiveRoom] = useState<'living' | 'kitchen'>('living');
+  const [activeRoom, setActiveRoom] = useState<RoomType>('living');
   const [selectedMaterial, setSelectedMaterial] = useState<string>('Plywood');
   const [prevMaterial, setPrevMaterial] = useState<string>('Plywood');
   const [finishOption, setFinishOption] = useState<string>('Matte');
@@ -39,10 +42,12 @@ const AIModularStudio: React.FC = () => {
   // Animations progress states (0 to 1)
   const [transitionProgress, setTransitionProgress] = useState<number>(1.0); // Room walkthrough progress
   const [morphProgress, setMorphProgress] = useState<number>(1.0); // Material texture morph progress
-  const [wardrobeDoorOpen, setWardrobeDoorOpen] = useState<boolean>(false);
-  const [wardrobeDoorProgress, setWardrobeDoorProgress] = useState<number>(0);
-  const [kitchenDrawerOpen, setKitchenDrawerOpen] = useState<boolean>(false);
-  const [kitchenDrawerProgress, setKitchenDrawerProgress] = useState<number>(0);
+  const [wardrobeDoorOpen, setWardrobeDoorOpen] = useState<boolean>(true);
+  const [wardrobeDoorProgress, setWardrobeDoorProgress] = useState<number>(1);
+  const [kitchenDrawerOpen, setKitchenDrawerOpen] = useState<boolean>(true);
+  const [kitchenDrawerProgress, setKitchenDrawerProgress] = useState<number>(1);
+  const [windowOpen, setWindowOpen] = useState<boolean>(false);
+  const [windowProgress, setWindowProgress] = useState<number>(0);
 
   // Camera Orbit & View states
   const [zoom, setZoom] = useState<number>(1.0);
@@ -52,9 +57,6 @@ const AIModularStudio: React.FC = () => {
   const [sliderPos, setSliderPos] = useState<number>(50); // Split slider
   const [isDraggingSlider, setIsDraggingSlider] = useState<boolean>(false);
 
-  // Simulation states
-  const [scanning, setScanning] = useState<boolean>(false);
-  const [scanPoints, setScanPoints] = useState<number>(0);
   const [flash, setFlash] = useState<boolean>(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -100,7 +102,7 @@ const AIModularStudio: React.FC = () => {
   }, [selectedMaterial, paintColor]);
 
   // Run room transition camera walkthrough animation loop
-  const triggerRoomChange = (room: 'living' | 'kitchen') => {
+  const triggerRoomChange = (room: RoomType) => {
     setActiveRoom(room);
     setTransitionProgress(0);
   };
@@ -151,14 +153,43 @@ const AIModularStudio: React.FC = () => {
     return () => cancelAnimationFrame(animId);
   }, [kitchenDrawerOpen]);
 
+  // Run Window animation loop
+  useEffect(() => {
+    let animId: number;
+    const tick = () => {
+      setWindowProgress(prev => {
+        const target = windowOpen ? 1.0 : 0.0;
+        const diff = target - prev;
+        if (Math.abs(diff) < 0.02) return target;
+        animId = requestAnimationFrame(tick);
+        return prev + diff * 0.15;
+      });
+    };
+    tick();
+    return () => cancelAnimationFrame(animId);
+  }, [windowOpen]);
+
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const clickX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const clickY = ((e.clientY - rect.top) / rect.height) * canvas.height;
     
     const currentSplitX = (sliderPos / 100) * canvas.width;
+    
+    // Interactive click regions for the canvas elements
+    if (Math.abs(clickX - currentSplitX) > 20 && clickX > currentSplitX) {
+      if (clickX > canvas.width * 0.65) {
+        setWardrobeDoorOpen(prev => !prev);
+      } else if (clickX < canvas.width * 0.4 && clickY > canvas.height * 0.5) {
+        setKitchenDrawerOpen(prev => !prev);
+      } else if (clickY < canvas.height * 0.4) {
+        setWindowOpen(prev => !prev);
+      }
+    }
+
     if (Math.abs(clickX - currentSplitX) < 20) {
       setIsDraggingSlider(true);
     } else {
@@ -229,7 +260,10 @@ const AIModularStudio: React.FC = () => {
 
   // Cost calculation
   const calculateCosts = () => {
-    const baseCost = activeRoom === 'living' ? 85000 : 190000;
+    let baseCost = 85000;
+    if (activeRoom === 'kitchen') baseCost = 190000;
+    if (activeRoom === 'bedroom') baseCost = 120000;
+    
     const matMultiplier = selectedMaterial === 'Solid Wood' ? 1.6 : selectedMaterial === 'Plywood' ? 1.25 : selectedMaterial === 'MDF' ? 0.95 : 0.85;
     const materialCost = Math.round(baseCost * matMultiplier);
     const hardwareCost = Math.round(materialCost * 0.12);
@@ -264,19 +298,25 @@ const AIModularStudio: React.FC = () => {
       const splitX = (sliderPos / 100) * w;
 
       // Cinematic room position interpolation
-      const currentRoomTargetYaw = activeRoom === 'living' ? 140 : 220;
-      const currentRoomTargetPitch = activeRoom === 'living' ? -10 : -16;
-      const currentRoomTargetZoom = activeRoom === 'living' ? 1.0 : 1.15;
+      let currentRoomTargetYaw = 140;
+      let currentRoomTargetPitch = -10;
+      let currentRoomTargetZoom = 1.0;
 
-      const startingYaw = activeRoom === 'living' ? 220 : 140;
-      const startingPitch = activeRoom === 'living' ? -16 : -10;
-      const startingZoom = activeRoom === 'living' ? 1.15 : 1.0;
+      if (activeRoom === 'kitchen') {
+        currentRoomTargetYaw = 200;
+        currentRoomTargetPitch = -16;
+        currentRoomTargetZoom = 1.15;
+      } else if (activeRoom === 'bedroom') {
+        currentRoomTargetYaw = 170;
+        currentRoomTargetPitch = -5;
+        currentRoomTargetZoom = 1.05;
+      }
 
-      // Smooth camera path flythrough math
+      // Smooth camera path flythrough math (basic approach)
       const t = transitionProgress;
-      const interpolatedYaw = startingYaw + (currentRoomTargetYaw - startingYaw) * t;
-      const interpolatedPitch = startingPitch + (currentRoomTargetPitch - startingPitch) * t;
-      const interpolatedZoom = startingZoom + (currentRoomTargetZoom - startingZoom) * t;
+      const interpolatedYaw = yaw + (currentRoomTargetYaw - yaw) * t;
+      const interpolatedPitch = pitch + (currentRoomTargetPitch - pitch) * t;
+      const interpolatedZoom = zoom + (currentRoomTargetZoom - zoom) * t;
 
       const cx = w / 2 + (interpolatedYaw - 140) * 2.2 * interpolatedZoom;
       const cy = h / 2 - 10 + interpolatedPitch * 1.3 * interpolatedZoom;
@@ -369,55 +409,204 @@ const AIModularStudio: React.FC = () => {
         drawWall(rightWallTop, backRightTop, backRightBottom, rightWallBottom, activeColor);
         drawWall(backLeftTop, backRightTop, backRightBottom, backLeftBottom, '#CCCCCC');
 
-        // Draw Living Room Scene elements
-        if (interpolatedYaw < 180) {
+
+
+        // Detailed drawing helpers to match the reference image style
+        const outlineColor = '#8B5A2B'; // Brown wood frame
+        const accentColor = blendColors(activeColor, '#E3C666', 0.6); // Yellow/Gold tint
+
+        const drawDetailedWardrobe = (wx: number, wy: number, ww: number, wh: number, openProgress = 0) => {
+          ctx.fillStyle = outlineColor;
+          ctx.fillRect(wx, wy, ww, wh); // Outer frame
+          
+          const innerX = wx + 3;
+          const innerY = wy + 3;
+          const innerW = ww - 6;
+          const innerH = wh - 6;
+          const leftW = innerW * 0.4;
+          const rightW = innerW * 0.6;
+
+          // LEFT COLUMN
+          const topDoorH = innerH * 0.6;
+          ctx.fillStyle = activeColor;
+          ctx.fillRect(innerX, innerY, leftW, topDoorH);
+          ctx.strokeStyle = outlineColor;
+          ctx.strokeRect(innerX, innerY, leftW, topDoorH);
+          
+          // Accent strip
+          ctx.fillStyle = accentColor;
+          ctx.fillRect(innerX + leftW/2, innerY, leftW/2, topDoorH);
+          ctx.strokeRect(innerX + leftW/2, innerY, leftW/2, topDoorH);
+          
+          // Handles
+          ctx.fillStyle = outlineColor;
+          ctx.fillRect(innerX + leftW/2 - 6, innerY + topDoorH/2 - 15, 2, 30);
+          ctx.fillRect(innerX + leftW/2 + 4, innerY + topDoorH/2 - 15, 2, 30);
+
+          // Bottom 3 Drawers
+          const drawerH = (innerH * 0.4) / 3;
+          for (let i = 0; i < 3; i++) {
+            const dY = innerY + topDoorH + (i * drawerH);
+            // Pull drawer out to the left slightly when opening
+            const wOffset = openProgress * -15; 
+            ctx.fillStyle = i === 1 ? accentColor : activeColor;
+            ctx.fillRect(innerX + wOffset, dY, leftW, drawerH);
+            ctx.strokeRect(innerX + wOffset, dY, leftW, drawerH);
+            // Horizontal handle
+            ctx.fillStyle = outlineColor;
+            ctx.fillRect(innerX + wOffset + leftW/2 - 10, dY + drawerH/2 - 1, 20, 2);
+          }
+
+          // RIGHT COLUMN (Two tall doors)
+          const rightDoorW = rightW / 2;
+          const doorInnerX = innerX + leftW;
+          
+          // Draw Wardrobe Interior (Background shelves)
+          ctx.fillStyle = '#1a1a1a'; // Dark interior shadow
+          ctx.fillRect(doorInnerX, innerY, rightW, innerH);
+          ctx.fillStyle = outlineColor;
+          ctx.fillRect(doorInnerX, innerY + innerH * 0.3, rightW, 3); // Shelf 1
+          ctx.fillRect(doorInnerX, innerY + innerH * 0.6, rightW, 3); // Shelf 2
+          
+          // Draw shirts hanging on top shelf
+          ctx.fillStyle = activeColor;
+          ctx.fillRect(doorInnerX + 5, innerY + innerH * 0.1, rightW - 10, innerH * 0.15);
+          
+          // Animate doors opening (width shrinks to simulate swinging open)
+          const animW = Math.max(1, rightDoorW * (1 - (openProgress * 0.85)));
+          
+          // Left tall door (swings left)
+          ctx.fillStyle = accentColor;
+          ctx.fillRect(doorInnerX, innerY, animW, innerH);
+          ctx.strokeRect(doorInnerX, innerY, animW, innerH);
+          
+          // Right tall door (swings right)
+          const rightDoorX = doorInnerX + rightW - animW;
+          ctx.fillStyle = activeColor;
+          ctx.fillRect(rightDoorX, innerY, animW, innerH);
+          ctx.strokeRect(rightDoorX, innerY, animW, innerH);
+
+          // Tall door handles
+          ctx.fillStyle = outlineColor;
+          ctx.fillRect(doorInnerX + animW - 4, innerY + innerH/2 - 30, 2, 60);
+          ctx.fillRect(rightDoorX + 2, innerY + innerH/2 - 30, 2, 60);
+
+          // Legs
+          ctx.fillStyle = outlineColor;
+          ctx.beginPath(); ctx.moveTo(wx + 8, wy + wh); ctx.lineTo(wx + 16, wy + wh); ctx.lineTo(wx + 12, wy + wh + 12); ctx.lineTo(wx + 4, wy + wh + 12); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(wx + ww - 16, wy + wh); ctx.lineTo(wx + ww - 8, wy + wh); ctx.lineTo(wx + ww - 4, wy + wh + 12); ctx.lineTo(wx + ww - 12, wy + wh + 12); ctx.fill();
+        };
+
+        const drawDetailedCabinet = (bx: number, by: number, bw: number, bh: number, isAnimatedDrawer = false) => {
+          ctx.fillStyle = outlineColor;
+          ctx.fillRect(bx, by, bw, bh);
+          const cols = 3;
+          const cw = (bw - 6) / cols;
+          for (let i = 0; i < cols; i++) {
+            const cx_i = bx + 3 + i * cw;
+            const dh = (bh - 6) / 2;
+            for (let j = 0; j < 2; j++) {
+              const dy_j = by + 3 + j * dh;
+              // Animate all drawers if true
+              const yOffset = isAnimatedDrawer ? kitchenDrawerProgress * 15 : 0;
+              ctx.fillStyle = (i + j) % 2 === 0 ? activeColor : accentColor;
+              ctx.fillRect(cx_i, dy_j + yOffset, cw, dh);
+              ctx.strokeRect(cx_i, dy_j + yOffset, cw, dh);
+              ctx.fillStyle = outlineColor;
+              ctx.fillRect(cx_i + cw/2 - 12, dy_j + yOffset + dh/2 - 1, 24, 2);
+            }
+          }
+        };
+
+        // Draw Scene elements based on activeRoom
+        if (activeRoom === 'living') {
           // TV Unit back panel
           ctx.fillStyle = '#2C302E';
-          ctx.fillRect(cx - 100, cy - 60, 200, 110);
+          ctx.fillRect(cx - 120, cy - 70, 220, 130);
 
           // LED backlit strip glow
           ctx.fillStyle = lighting === 'Warm White' ? 'rgba(255, 90, 31, 0.15)' : 'rgba(255,255,255,0.12)';
-          ctx.fillRect(cx - 85, cy - 45, 170, 80);
+          ctx.fillRect(cx - 95, cy - 50, 170, 80);
 
           // Smart TV screen
           ctx.fillStyle = '#08080C';
-          ctx.fillRect(cx - 75, cy - 35, 150, 60);
+          ctx.fillRect(cx - 85, cy - 40, 150, 60);
           ctx.strokeStyle = '#FFFFFF';
-          ctx.strokeRect(cx - 75, cy - 35, 150, 60);
+          ctx.strokeRect(cx - 85, cy - 40, 150, 60);
 
-          // Wardrobe next to TV Unit
-          ctx.fillStyle = activeColor;
-          ctx.fillRect(cx + 105, cy - 90, 70, 180);
-          ctx.strokeRect(cx + 105, cy - 90, 70, 180);
+          // Detailed Table / TV Cabinet (Now animated!)
+          drawDetailedCabinet(cx - 100, cy + 25, 180, 45, true);
 
-          // Sliding mirror door open/close animation
-          const slideOffset = wardrobeDoorProgress * 30;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent mirror glass
-          ctx.fillRect(cx + 105 + slideOffset, cy - 90, 35, 180);
-          ctx.strokeStyle = '#FF5A1F';
-          ctx.strokeRect(cx + 105 + slideOffset, cy - 90, 35, 180);
+          // Detailed Wardrobe next to TV Unit
+          drawDetailedWardrobe(cx + 100, cy - 110, 80, 180, wardrobeDoorProgress);
 
-        } else {
-          // Draw Kitchen modular base boxes
-          ctx.fillStyle = activeColor;
-          ctx.fillRect(cx - 130, cy + 10, 260, 70);
-          ctx.strokeRect(cx - 130, cy + 10, 260, 70);
-
+        } else if (activeRoom === 'kitchen') {
           // Countertop surface
-          ctx.fillStyle = '#F5F5F0'; // quartz light countertop
-          ctx.fillRect(cx - 132, cy + 5, 264, 10);
-          ctx.strokeRect(cx - 132, cy + 5, 264, 10);
+          ctx.fillStyle = '#F5F5F0'; 
+          ctx.fillRect(cx - 132, cy - 5, 264, 10);
+          ctx.strokeRect(cx - 132, cy - 5, 264, 10);
 
-          // Animated Kitchen drawers soft close
-          const drawerSlide = kitchenDrawerProgress * 15;
-          ctx.fillStyle = '#2C302E';
-          ctx.fillRect(cx - 60, cy + 20 + drawerSlide, 50, 20);
-          ctx.strokeRect(cx - 60, cy + 20 + drawerSlide, 50, 20);
+          // Detailed Modular base boxes
+          drawDetailedCabinet(cx - 130, cy + 5, 260, 75, true);
+
+        } else if (activeRoom === 'bedroom') {
+          // Draw Detailed Bed (Side Profile matching user image)
+          const bedW = 200;
+          // Center the bed horizontally on the left side and vertically on the floor area
+          const bedX = cx - 220; 
+          const bedY = cy + floorOffset + 60; 
+          
+          const darkFrame = '#403038';
+          const mattressPink = '#FCAEAD';
+          const blanketPurple = '#36304A';
+          const pillowGrey = '#A1A6BC';
+
+          // Frame Base & Legs
+          ctx.fillStyle = darkFrame;
+          ctx.fillRect(bedX + 10, bedY, bedW - 10, 15); // Frame base
+          ctx.fillRect(bedX + 10, bedY + 15, 8, 15); // Left leg
+          ctx.fillRect(bedX + bedW - 15, bedY + 15, 8, 15); // Right leg
+          
+          // Headboard (slightly rounded top)
+          ctx.beginPath();
+          ctx.moveTo(bedX, bedY + 15);
+          ctx.lineTo(bedX, bedY - 45);
+          ctx.arcTo(bedX, bedY - 55, bedX + 15, bedY - 55, 10);
+          ctx.lineTo(bedX + 15, bedY + 15);
+          ctx.fill();
+          
+          // Mattress
+          ctx.fillStyle = mattressPink;
+          ctx.fillRect(bedX + 15, bedY - 15, bedW - 25, 15);
+          // rounded front corner on mattress
+          ctx.beginPath();
+          ctx.arc(bedX + bedW - 10, bedY - 7.5, 7.5, -Math.PI/2, Math.PI/2);
+          ctx.fill();
+          
+          // Pillow (Curve)
+          ctx.fillStyle = pillowGrey;
+          ctx.beginPath();
+          ctx.moveTo(bedX + 15, bedY - 15);
+          ctx.quadraticCurveTo(bedX + 45, bedY - 35, bedX + 65, bedY - 15);
+          ctx.fill();
+          
+          // Blanket
+          ctx.fillStyle = blanketPurple;
+          ctx.fillRect(bedX + 75, bedY - 18, 115, 18); // Covers mattress
+          ctx.beginPath();
+          ctx.arc(bedX + 190, bedY - 9, 9, -Math.PI/2, Math.PI/2);
+          ctx.fill();
+
+          // Detailed Wardrobe
+          drawDetailedWardrobe(cx + 100, cy - 110, 90, 180, wardrobeDoorProgress);
         }
 
         // Ambiance filters
         if (lighting.includes('Warm')) {
           ctx.fillStyle = 'rgba(255, 90, 31, 0.08)';
+          ctx.fill();
+        } else if (lighting.includes('Cool')) {
+          ctx.fillStyle = 'rgba(100, 200, 255, 0.05)';
           ctx.fill();
         }
       };
@@ -461,7 +650,7 @@ const AIModularStudio: React.FC = () => {
     render();
 
     return () => cancelAnimationFrame(animFrameId);
-  }, [activeRoom, transitionProgress, morphProgress, paintColor, selectedMaterial, lighting, handleStyle, wardrobeDoorProgress, kitchenDrawerProgress, zoom, sliderPos, yaw, pitch]);
+  }, [activeRoom, transitionProgress, morphProgress, paintColor, selectedMaterial, lighting, handleStyle, wardrobeDoorProgress, kitchenDrawerProgress, windowProgress, zoom, sliderPos, yaw, pitch]);
 
   const handleCaptureSnapshot = () => {
     const canvas = canvasRef.current;
@@ -483,7 +672,11 @@ const AIModularStudio: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12"
+    >
       {flash && (
         <div className="fixed inset-0 bg-white z-50 animate-ping pointer-events-none"></div>
       )}
@@ -501,14 +694,27 @@ const AIModularStudio: React.FC = () => {
             Design and customize modular interiors with real-time AI visualization. Compare materials, colors, finishes, layouts, and pricing before installation.
           </p>
         </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => triggerRoomChange(activeRoom === 'living' ? 'kitchen' : 'living')}
-            className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-glow transition-all flex items-center space-x-1.5"
-          >
-            <Compass className="w-4 h-4 text-white" />
-            <span>Go to {activeRoom === 'living' ? 'Kitchen' : 'Living Room'}</span>
-          </button>
+        
+        {/* Animated Room Switcher */}
+        <div className="flex bg-gray-100 p-1 rounded-2xl">
+          {[
+            { id: 'living', name: 'Living Room', icon: <Sofa className="w-4 h-4" /> },
+            { id: 'kitchen', name: 'Kitchen', icon: <UtensilsCrossed className="w-4 h-4" /> },
+            { id: 'bedroom', name: 'Bedroom', icon: <Bed className="w-4 h-4" /> }
+          ].map(room => (
+             <button
+              key={room.id}
+              onClick={() => triggerRoomChange(room.id as RoomType)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center space-x-1.5 ${
+                activeRoom === room.id
+                  ? 'bg-primary text-white shadow-glow transform scale-[1.02]'
+                  : 'bg-transparent text-gray-500 hover:text-black hover:bg-gray-200'
+              }`}
+            >
+              {room.icon}
+              <span>{room.name}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -517,7 +723,10 @@ const AIModularStudio: React.FC = () => {
         
         {/* LEFT COLUMN: INTERACTIVE VISUALIZER (Span 3 / 75%) */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="relative rounded-3xl border border-brandLight-border overflow-hidden bg-white aspect-video flex flex-col justify-between shadow-2xl glass-panel group">
+          <motion.div 
+            layout
+            className="relative rounded-3xl border border-brandLight-border overflow-hidden bg-white aspect-video flex flex-col justify-between shadow-2xl glass-panel group"
+          >
             {/* View Canvas */}
             <canvas
               ref={canvasRef}
@@ -527,7 +736,7 @@ const AIModularStudio: React.FC = () => {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUpOrLeave}
               onMouseLeave={handleMouseUpOrLeave}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover cursor-crosshair"
             />
 
             {/* Help Overlay HUD */}
@@ -555,14 +764,15 @@ const AIModularStudio: React.FC = () => {
 
             {/* Animation controllers overlay */}
             <div className="absolute bottom-4 right-4 bg-white/90 border border-brandLight-border p-1.5 rounded-xl flex items-center space-x-2 shadow-sm">
-              {activeRoom === 'living' ? (
+              {(activeRoom === 'living' || activeRoom === 'bedroom') && (
                 <button
                   onClick={() => setWardrobeDoorOpen(!wardrobeDoorOpen)}
                   className="px-2.5 py-1 bg-primary text-white text-[9px] font-bold rounded hover:bg-primary-dark transition-all"
                 >
                   {wardrobeDoorOpen ? 'Close Wardrobe' : 'Open Wardrobe'}
                 </button>
-              ) : (
+              )}
+              {activeRoom === 'kitchen' && (
                 <button
                   onClick={() => setKitchenDrawerOpen(!kitchenDrawerOpen)}
                   className="px-2.5 py-1 bg-primary text-white text-[9px] font-bold rounded hover:bg-primary-dark transition-all"
@@ -571,7 +781,7 @@ const AIModularStudio: React.FC = () => {
                 </button>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Quick Studio Bar Actions */}
           <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start">
@@ -585,12 +795,12 @@ const AIModularStudio: React.FC = () => {
                 setZoom(1.0);
                 setYaw(140);
                 setPitch(-10);
-                setWardrobeDoorOpen(false);
-                setKitchenDrawerOpen(false);
+                setWardrobeDoorOpen(true);
+                setKitchenDrawerOpen(true);
               }}
-              className="px-4 py-2 text-xs font-bold border border-brandLight-border bg-white text-gray-700 hover:text-black rounded-xl flex items-center space-x-1.5 hover:border-primary/45 transition-all shadow-sm"
+              className="px-4 py-2 text-xs font-bold border border-brandLight-border bg-white text-gray-700 hover:text-black rounded-xl flex items-center space-x-1.5 hover:border-primary/45 transition-all shadow-sm group"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-180 transition-transform duration-500" />
               <span>Reset Configuration</span>
             </button>
             <button
@@ -611,7 +821,11 @@ const AIModularStudio: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: AI CONFIGURATION PANEL (Span 1 / 25%) */}
-        <div className="lg:col-span-1 space-y-6 max-h-[85vh] overflow-y-auto pr-1">
+        <motion.div 
+          initial={{ x: 20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          className="lg:col-span-1 space-y-6 max-h-[85vh] overflow-y-auto pr-1"
+        >
           <div className="p-6 rounded-3xl border border-brandLight-border bg-white glass-panel space-y-6 shadow-xl">
             <h3 className="text-brandDark-black font-bold text-base font-display pb-3 border-b border-brandLight-border flex items-center space-x-2">
               <Sliders className="w-4 h-4 text-primary" />
@@ -626,10 +840,10 @@ const AIModularStudio: React.FC = () => {
                   <button
                     key={mat}
                     onClick={() => handleMaterialSelect(mat)}
-                    className={`p-3 rounded-xl border text-left transition-all ${
+                    className={`p-3 rounded-xl border text-left transition-all duration-300 ${
                       selectedMaterial === mat
-                        ? 'bg-primary/10 border-primary shadow-sm text-primary'
-                        : 'bg-white border-brandLight-border text-gray-600 hover:text-black'
+                        ? 'bg-primary/10 border-primary shadow-sm text-primary scale-[1.03]'
+                        : 'bg-white border-brandLight-border text-gray-600 hover:text-black hover:border-gray-300'
                     }`}
                   >
                     <span className="font-extrabold text-[11px] block">{mat}</span>
@@ -650,7 +864,7 @@ const AIModularStudio: React.FC = () => {
                     className={`py-1.5 px-2 rounded-xl text-[10px] font-bold border transition-all text-center truncate ${
                       finishOption === f
                         ? 'bg-primary/15 text-primary border-primary/45 shadow-sm'
-                        : 'bg-white border-brandLight-border text-gray-600 hover:text-black'
+                        : 'bg-white border-brandLight-border text-gray-600 hover:bg-gray-50'
                     }`}
                   >
                     {f}
@@ -667,23 +881,25 @@ const AIModularStudio: React.FC = () => {
                   <button
                     key={idx}
                     onClick={() => handleColorSelect(c.hex)}
-                    className="w-7 h-7 rounded-full border border-brandLight-border relative flex items-center justify-center transition-transform hover:scale-110"
+                    className={`w-7 h-7 rounded-full border border-brandLight-border relative flex items-center justify-center transition-all ${
+                       paintColor === c.hex ? 'scale-110 shadow-md border-primary' : 'hover:scale-110'
+                    }`}
                     style={{ backgroundColor: c.hex }}
                     title={c.name}
                   >
                     {paintColor === c.hex && (
-                      <Check className="w-3.5 h-3.5 text-black" />
+                      <Check className="w-3.5 h-3.5 text-primary mix-blend-difference drop-shadow-sm" />
                     )}
                   </button>
                 ))}
                 {/* Custom Color Input Swatch */}
-                <div className="relative w-7 h-7 rounded-full border border-brandLight-border hover:scale-110 transition-transform flex items-center justify-center overflow-hidden bg-gradient-to-tr from-amber-400 via-rose-500 to-indigo-500 cursor-pointer">
-                  <Pipette className="w-3.5 h-3.5 text-white pointer-events-none" />
+                <div className="relative w-7 h-7 rounded-full border border-brandLight-border hover:scale-110 transition-transform flex items-center justify-center overflow-hidden bg-gradient-to-tr from-amber-400 via-rose-500 to-indigo-500 cursor-pointer shadow-sm">
+                  <Pipette className="w-3.5 h-3.5 text-white pointer-events-none drop-shadow-sm" />
                   <input
                     type="color"
                     value={paintColor}
                     onChange={(e) => handleColorSelect(e.target.value)}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-fullScale"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   />
                 </div>
               </div>
@@ -700,7 +916,7 @@ const AIModularStudio: React.FC = () => {
                     className={`py-1.5 px-2 rounded-xl text-[10px] font-bold border transition-all text-center truncate ${
                       lighting === l
                         ? 'bg-primary/15 text-primary border-primary/45 shadow-sm'
-                        : 'bg-white border-brandLight-border text-gray-600 hover:text-black'
+                        : 'bg-white border-brandLight-border text-gray-600 hover:bg-gray-50'
                     }`}
                   >
                     {l}
@@ -717,7 +933,7 @@ const AIModularStudio: React.FC = () => {
                     className={`py-1.5 rounded-lg text-[9px] font-bold border transition-all text-center ${
                       handleStyle === h
                         ? 'bg-primary/15 text-primary border-primary/45 shadow-sm'
-                        : 'bg-white border-brandLight-border text-gray-600 hover:text-black'
+                        : 'bg-white border-brandLight-border text-gray-600 hover:bg-gray-50'
                     }`}
                   >
                     {h}
@@ -727,7 +943,12 @@ const AIModularStudio: React.FC = () => {
             </div>
 
             {/* REAL-TIME COST ESTIMATION PANEL */}
-            <div className="p-4 rounded-2xl bg-gray-50 border border-brandLight-border space-y-2 text-[10px] text-gray-600 font-semibold shadow-inner">
+            <motion.div 
+              key={activeRoom}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl bg-gray-50 border border-brandLight-border space-y-2 text-[10px] text-gray-600 font-semibold shadow-inner"
+            >
               <span className="text-primary font-black uppercase tracking-wider text-[9px] block">Live Pricing Estimations</span>
               <div className="flex justify-between">
                 <span>Material Cost:</span>
@@ -745,7 +966,7 @@ const AIModularStudio: React.FC = () => {
                 <span className="text-primary font-bold">Estimated Cost:</span>
                 <span className="text-black font-black">₹{costs.grandTotal.toLocaleString()}</span>
               </div>
-            </div>
+            </motion.div>
 
             {/* AI DECISION ASSISTANCE */}
             <div className="space-y-3 pt-4 border-t border-brandLight-border">
@@ -753,11 +974,15 @@ const AIModularStudio: React.FC = () => {
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>AI Recommended Deck</span>
               </label>
-              <div className="bg-primary/5 border border-primary/15 p-3 rounded-xl text-[9px] text-gray-600 leading-relaxed space-y-1">
+              <motion.div 
+                key={selectedMaterial}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="bg-primary/5 border border-primary/15 p-3 rounded-xl text-[9px] text-gray-600 leading-relaxed space-y-1"
+              >
                 <p><strong>Harmony Fit Score:</strong> 96%</p>
                 <p><strong>Recommended Material:</strong> {selectedMaterial === 'PVC' ? 'Plywood for heavy load units.' : 'Solid Wood for high durability.'}</p>
                 <p><strong>Maintenance Score:</strong> {materialMetrics[selectedMaterial].maintenance} level required.</p>
-              </div>
+              </motion.div>
             </div>
 
             {/* AI BUDGET OPTIMIZER */}
@@ -780,12 +1005,17 @@ const AIModularStudio: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
       </div>
 
       {/* BOTTOM ACTIONS BAR */}
-      <div className="p-6 rounded-3xl border border-brandLight-border bg-white flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="p-6 rounded-3xl border border-brandLight-border bg-white flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl"
+      >
         <div className="flex items-center space-x-2 text-xs font-semibold text-gray-500">
           <Info className="w-4 h-4 text-primary" />
           <span>Compare materials, colors, and layouts. Instantly launch preview modes or book verified designers.</span>
@@ -800,14 +1030,14 @@ const AIModularStudio: React.FC = () => {
           </button>
           <button
             onClick={() => alert('Booking designer appointment process...')}
-            className="px-5 py-2 text-xs font-bold bg-primary hover:bg-primary-dark text-white rounded-xl flex items-center space-x-1.5 transition-all shadow-glow"
+            className="px-5 py-2 text-xs font-bold bg-primary hover:bg-primary-dark text-white rounded-xl flex items-center space-x-1.5 transition-all shadow-glow transform hover:scale-105"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Book Interior Designer</span>
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
