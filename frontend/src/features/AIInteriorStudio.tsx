@@ -57,6 +57,12 @@ const AIModularStudio: React.FC = () => {
   const [sliderPos, setSliderPos] = useState<number>(50); // Split slider
   const [isDraggingSlider, setIsDraggingSlider] = useState<boolean>(false);
 
+  // New simulated 3D interaction states
+  const [kitchenDrawersOpen, setKitchenDrawersOpen] = useState<boolean[]>([false, false, false, false, false, false]);
+  const [kitchenDrawersProgress, setKitchenDrawersProgress] = useState<number[]>([0, 0, 0, 0, 0, 0]);
+  const [bedOffset, setBedOffset] = useState<{x: number, y: number}>({ x: 120, y: -40 }); // Positioned in "target area"
+  const [isDraggingBed, setIsDraggingBed] = useState<boolean>(false);
+
   const [flash, setFlash] = useState<boolean>(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -148,10 +154,25 @@ const AIModularStudio: React.FC = () => {
         animId = requestAnimationFrame(tick);
         return prev + diff * 0.12; // soft-close physics
       });
+      // Individual drawers
+      setKitchenDrawersProgress(prevArr => {
+        let animating = false;
+        const newArr = prevArr.map((prev, i) => {
+          const target = kitchenDrawersOpen[i] ? 1.0 : 0.0;
+          const diff = target - prev;
+          if (Math.abs(diff) > 0.02) {
+             animating = true;
+             return prev + diff * 0.12;
+          }
+          return target;
+        });
+        if (animating && !animId) animId = requestAnimationFrame(tick);
+        return newArr;
+      });
     };
     tick();
     return () => cancelAnimationFrame(animId);
-  }, [kitchenDrawerOpen]);
+  }, [kitchenDrawerOpen, kitchenDrawersOpen]);
 
   // Run Window animation loop
   useEffect(() => {
@@ -170,7 +191,8 @@ const AIModularStudio: React.FC = () => {
   }, [windowOpen]);
 
   // Drag handlers
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.target.setPointerCapture(e.pointerId);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -181,6 +203,57 @@ const AIModularStudio: React.FC = () => {
     
     // Interactive click regions for the canvas elements
     if (Math.abs(clickX - currentSplitX) > 20 && clickX > currentSplitX) {
+      if (activeRoom === 'bedroom') {
+        const w = canvas.width;
+        const h = canvas.height;
+        // Approximation of projected bed coordinates for hitbox
+        const cx = w / 2 + (yaw - 140) * 2.2 * zoom;
+        const cy = h / 2 - 10 + pitch * 1.3 * zoom;
+        const floorOffset = 70 * zoom;
+        const bedX = cx - 220 + bedOffset.x;
+        const bedY = cy + floorOffset + 60 + bedOffset.y;
+        const bedW = 200;
+        const bedH = 80;
+        if (clickX >= bedX && clickX <= bedX + bedW && clickY >= bedY - bedH && clickY <= bedY + 30) {
+           setIsDraggingBed(true);
+           lastMouseX.current = e.clientX;
+           lastMouseY.current = e.clientY;
+           return;
+        }
+      }
+
+      if (activeRoom === 'kitchen') {
+        // approximate kitchen drawer hitboxes
+        const w = canvas.width;
+        const h = canvas.height;
+        const cx = w / 2 + (200 - 140) * 2.2 * 1.15; 
+        const cy = h / 2 - 10 - 16 * 1.3 * 1.15;
+        const bx = cx - 130;
+        const by = cy + 5;
+        const bw = 260;
+        const bh = 75;
+        const cols = 3;
+        const cw = (bw - 6) / cols;
+        const dh = (bh - 6) / 2;
+        
+        let clickedDrawer = false;
+        for (let i = 0; i < cols; i++) {
+          const cx_i = bx + 3 + i * cw;
+          for (let j = 0; j < 2; j++) {
+            const dy_j = by + 3 + j * dh;
+            if (clickX >= cx_i && clickX <= cx_i + cw && clickY >= dy_j && clickY <= dy_j + dh) {
+              setKitchenDrawersOpen(prev => {
+                const arr = [...prev];
+                arr[i * 2 + j] = !arr[i * 2 + j];
+                return arr;
+              });
+              clickedDrawer = true;
+            }
+          }
+        }
+        if (clickedDrawer) return;
+      }
+
       if (clickX > canvas.width * 0.65) {
         setWardrobeDoorOpen(prev => !prev);
       } else if (clickX < canvas.width * 0.4 && clickY > canvas.height * 0.5) {
@@ -199,7 +272,7 @@ const AIModularStudio: React.FC = () => {
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -208,6 +281,21 @@ const AIModularStudio: React.FC = () => {
       const clickX = ((e.clientX - rect.left) / rect.width) * canvas.width;
       const newPos = Math.max(0, Math.min(100, (clickX / canvas.width) * 100));
       setSliderPos(newPos);
+    } else if (isDraggingBed) {
+      const deltaX = e.clientX - lastMouseX.current;
+      const deltaY = e.clientY - lastMouseY.current;
+      setBedOffset(prev => {
+         // Constrain bed movement
+         let nx = prev.x + deltaX * (canvas.width / rect.width);
+         let ny = prev.y + deltaY * (canvas.height / rect.height);
+         if (nx < -50) nx = -50;
+         if (nx > 250) nx = 250;
+         if (ny < -150) ny = -150;
+         if (ny > 50) ny = 50;
+         return { x: nx, y: ny };
+      });
+      lastMouseX.current = e.clientX;
+      lastMouseY.current = e.clientY;
     } else if (isDragging) {
       const deltaX = e.clientX - lastMouseX.current;
       const deltaY = e.clientY - lastMouseY.current;
@@ -231,9 +319,11 @@ const AIModularStudio: React.FC = () => {
     }
   };
 
-  const handleMouseUpOrLeave = () => {
+  const handlePointerUpOrLeave = (e: React.PointerEvent<HTMLCanvasElement>) => {
     setIsDragging(false);
     setIsDraggingSlider(false);
+    setIsDraggingBed(false);
+    e.target.releasePointerCapture(e.pointerId);
   };
 
   // Color blending helper for texture transition
@@ -497,7 +587,7 @@ const AIModularStudio: React.FC = () => {
           ctx.beginPath(); ctx.moveTo(wx + ww - 16, wy + wh); ctx.lineTo(wx + ww - 8, wy + wh); ctx.lineTo(wx + ww - 4, wy + wh + 12); ctx.lineTo(wx + ww - 12, wy + wh + 12); ctx.fill();
         };
 
-        const drawDetailedCabinet = (bx: number, by: number, bw: number, bh: number, isAnimatedDrawer = false) => {
+        const drawDetailedCabinet = (bx: number, by: number, bw: number, bh: number, isAnimatedDrawer = false, individualDrawersProgress?: number[]) => {
           ctx.fillStyle = outlineColor;
           ctx.fillRect(bx, by, bw, bh);
           const cols = 3;
@@ -507,8 +597,13 @@ const AIModularStudio: React.FC = () => {
             const dh = (bh - 6) / 2;
             for (let j = 0; j < 2; j++) {
               const dy_j = by + 3 + j * dh;
-              // Animate all drawers if true
-              const yOffset = isAnimatedDrawer ? kitchenDrawerProgress * 15 : 0;
+              let prog = 0;
+              if (individualDrawersProgress && individualDrawersProgress.length > i * 2 + j) {
+                 prog = individualDrawersProgress[i * 2 + j];
+              } else if (isAnimatedDrawer) {
+                 prog = kitchenDrawerProgress;
+              }
+              const yOffset = prog * 15;
               ctx.fillStyle = (i + j) % 2 === 0 ? activeColor : accentColor;
               ctx.fillRect(cx_i, dy_j + yOffset, cw, dh);
               ctx.strokeRect(cx_i, dy_j + yOffset, cw, dh);
@@ -541,20 +636,86 @@ const AIModularStudio: React.FC = () => {
           drawDetailedWardrobe(cx + 100, cy - 110, 80, 180, wardrobeDoorProgress);
 
         } else if (activeRoom === 'kitchen') {
+          // Window/Backsplash
+          ctx.fillStyle = '#E8E8E8'; // Tile backsplash
+          ctx.fillRect(cx - 132, cy - 80, 264, 75);
+          ctx.strokeStyle = '#CCCCCC';
+          for(let i = 0; i < 264; i+=15) { ctx.strokeRect(cx - 132 + i, cy - 80, 15, 75); }
+
+          // Chimney / Range Hood
+          ctx.fillStyle = '#C0C0C0';
+          ctx.fillRect(cx - 40, cy - 130, 80, 40); // Hood duct
+          ctx.fillStyle = '#A0A0A0';
+          ctx.fillRect(cx - 55, cy - 90, 110, 15); // Hood base
+          ctx.strokeStyle = '#606060';
+          ctx.strokeRect(cx - 55, cy - 90, 110, 15);
+
+          // Upper Cabinets
+          ctx.fillStyle = activeColor;
+          ctx.fillRect(cx - 132, cy - 130, 92, 50); // Left Upper
+          ctx.strokeRect(cx - 132, cy - 130, 92, 50);
+          ctx.fillRect(cx + 40, cy - 130, 92, 50); // Right Upper
+          ctx.strokeRect(cx + 40, cy - 130, 92, 50);
+
           // Countertop surface
           ctx.fillStyle = '#F5F5F0'; 
           ctx.fillRect(cx - 132, cy - 5, 264, 10);
           ctx.strokeRect(cx - 132, cy - 5, 264, 10);
 
+          // Stove top
+          ctx.fillStyle = '#1A1A1A';
+          ctx.fillRect(cx - 45, cy - 5, 90, 8);
+          // Burners
+          ctx.fillStyle = '#FF5A1F';
+          ctx.beginPath(); ctx.arc(cx - 20, cy - 1, 5, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(cx + 20, cy - 1, 5, 0, Math.PI*2); ctx.fill();
+
+          // Kitchen Items
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(cx - 110, cy - 25, 15, 20); // Small appliance / jar
+          ctx.fillStyle = '#606060';
+          ctx.fillRect(cx - 90, cy - 15, 25, 10); // Pan/Pot
+
           // Detailed Modular base boxes
-          drawDetailedCabinet(cx - 130, cy + 5, 260, 75, true);
+          drawDetailedCabinet(cx - 130, cy + 5, 260, 75, false, kitchenDrawersProgress);
+
+          // Oven (placed in middle section of base cabinets)
+          const ovenX = cx - 35;
+          const ovenY = cy + 10;
+          ctx.fillStyle = '#2A2A2A';
+          ctx.fillRect(ovenX, ovenY, 70, 60);
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(ovenX + 10, ovenY + 10, 50, 30); // Window
+          ctx.fillStyle = '#C0C0C0';
+          ctx.fillRect(ovenX + 10, ovenY + 5, 50, 4); // Handle
 
         } else if (activeRoom === 'bedroom') {
+          // Bedroom Window
+          const winX = cx - 80;
+          const winY = cy - 130;
+          const winW = 120;
+          const winH = 90;
+          ctx.fillStyle = '#D3E3E8'; // Glass
+          ctx.fillRect(winX, winY, winW, winH);
+          ctx.fillStyle = '#FFFFFF'; // Frame
+          ctx.fillRect(winX - 5, winY - 5, winW + 10, 5); // Top
+          ctx.fillRect(winX - 5, winY + winH, winW + 10, 5); // Bottom
+          ctx.fillRect(winX - 5, winY, 5, winH); // Left
+          ctx.fillRect(winX + winW, winY, 5, winH); // Right
+          ctx.fillRect(winX + winW / 2 - 2, winY, 4, winH); // Middle vertical
+          ctx.fillRect(winX, winY + winH / 2 - 2, winW, 4); // Middle horizontal
+
+          // Subtle outdoor view through window
+          ctx.fillStyle = 'rgba(100, 150, 200, 0.3)';
+          ctx.fillRect(winX, winY, winW, winH);
+          ctx.fillStyle = '#4A6B53'; // Tree hint
+          ctx.beginPath(); ctx.moveTo(winX + 20, winY + winH); ctx.lineTo(winX + 40, winY + winH - 40); ctx.lineTo(winX + 60, winY + winH); ctx.fill();
+
           // Draw Detailed Bed (Side Profile matching user image)
           const bedW = 200;
-          // Center the bed horizontally on the left side and vertically on the floor area
-          const bedX = cx - 220; 
-          const bedY = cy + floorOffset + 60; 
+          // Apply bedOffset so it moves according to drag
+          const bedX = cx - 220 + bedOffset.x; 
+          const bedY = cy + floorOffset + 60 + bedOffset.y; 
           
           const darkFrame = '#403038';
           const mattressPink = '#FCAEAD';
@@ -650,7 +811,7 @@ const AIModularStudio: React.FC = () => {
     render();
 
     return () => cancelAnimationFrame(animFrameId);
-  }, [activeRoom, transitionProgress, morphProgress, paintColor, selectedMaterial, lighting, handleStyle, wardrobeDoorProgress, kitchenDrawerProgress, windowProgress, zoom, sliderPos, yaw, pitch]);
+  }, [activeRoom, transitionProgress, morphProgress, paintColor, selectedMaterial, lighting, handleStyle, wardrobeDoorProgress, kitchenDrawerProgress, kitchenDrawersProgress, windowProgress, zoom, sliderPos, yaw, pitch, bedOffset]);
 
   const handleCaptureSnapshot = () => {
     const canvas = canvasRef.current;
@@ -732,11 +893,11 @@ const AIModularStudio: React.FC = () => {
               ref={canvasRef}
               width={800}
               height={450}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUpOrLeave}
-              onMouseLeave={handleMouseUpOrLeave}
-              className="w-full h-full object-cover cursor-crosshair"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUpOrLeave}
+              onPointerLeave={handlePointerUpOrLeave}
+              className="w-full h-full object-cover cursor-crosshair touch-none"
             />
 
             {/* Help Overlay HUD */}
