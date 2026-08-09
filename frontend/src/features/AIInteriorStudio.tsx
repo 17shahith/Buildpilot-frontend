@@ -62,6 +62,16 @@ const AIModularStudio: React.FC = () => {
   const [kitchenDrawersProgress, setKitchenDrawersProgress] = useState<number[]>([0, 0, 0, 0, 0, 0]);
   const [bedOffset, setBedOffset] = useState<{x: number, y: number}>({ x: 120, y: -40 }); // Positioned in "target area"
   const [isDraggingBed, setIsDraggingBed] = useState<boolean>(false);
+  
+  // Object-specific material selection state
+  const [selectedObject, setSelectedObject] = useState<string>('wardrobe_living');
+  const [objectMaterials, setObjectMaterials] = useState<Record<string, string>>({
+    'tv_unit': 'MDF',
+    'wardrobe_living': 'Solid Wood',
+    'kitchen_base': 'Plywood',
+    'wardrobe_bedroom': 'Solid Wood',
+    'bed': 'Solid Wood'
+  });
 
   const [flash, setFlash] = useState<boolean>(false);
 
@@ -83,6 +93,10 @@ const AIModularStudio: React.FC = () => {
     setPrevMaterial(selectedMaterial);
     setSelectedMaterial(mat);
     setMorphProgress(0);
+    setObjectMaterials(prev => ({
+      ...prev,
+      [selectedObject]: mat
+    }));
   };
 
   // Helper to trigger color morph animation
@@ -201,33 +215,64 @@ const AIModularStudio: React.FC = () => {
     
     const currentSplitX = (sliderPos / 100) * canvas.width;
     
+    // Calculate exact cx, cy used in rendering for accurate hitboxes
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    let currentRoomTargetYaw = 140;
+    let currentRoomTargetPitch = -10;
+    let currentRoomTargetZoom = 1.0;
+
+    if (activeRoom === 'kitchen') {
+      currentRoomTargetYaw = 200;
+      currentRoomTargetPitch = -16;
+      currentRoomTargetZoom = 1.15;
+    } else if (activeRoom === 'bedroom') {
+      currentRoomTargetYaw = 170;
+      currentRoomTargetPitch = -5;
+      currentRoomTargetZoom = 1.05;
+    }
+
+    const t = transitionProgress;
+    const interpolatedYaw = yaw + (currentRoomTargetYaw - yaw) * t;
+    const interpolatedPitch = pitch + (currentRoomTargetPitch - pitch) * t;
+    const interpolatedZoom = zoom + (currentRoomTargetZoom - zoom) * t;
+
+    const cx = w / 2 + (interpolatedYaw - 140) * 2.2 * interpolatedZoom;
+    const cy = h / 2 - 10 + interpolatedPitch * 1.3 * interpolatedZoom;
+    
     // Interactive click regions for the canvas elements
     if (Math.abs(clickX - currentSplitX) > 20 && clickX > currentSplitX) {
       if (activeRoom === 'bedroom') {
-        const w = canvas.width;
-        const h = canvas.height;
-        // Approximation of projected bed coordinates for hitbox
-        const cx = w / 2 + (yaw - 140) * 2.2 * zoom;
-        const cy = h / 2 - 10 + pitch * 1.3 * zoom;
-        const floorOffset = 70 * zoom;
+        const floorOffset = 70 * interpolatedZoom;
         const bedX = cx - 220 + bedOffset.x;
         const bedY = cy + floorOffset + 60 + bedOffset.y;
         const bedW = 200;
         const bedH = 80;
         if (clickX >= bedX && clickX <= bedX + bedW && clickY >= bedY - bedH && clickY <= bedY + 30) {
+           setSelectedObject('bed');
            setIsDraggingBed(true);
            lastMouseX.current = e.clientX;
            lastMouseY.current = e.clientY;
            return;
         }
+
+        const cx_wb = cx + 100;
+        const cy_wb = cy - 110;
+        if (clickX >= cx_wb && clickX <= cx_wb + 90 && clickY >= cy_wb && clickY <= cy_wb + 180) {
+           setSelectedObject('wardrobe_bedroom');
+        }
+
+      } else if (activeRoom === 'living') {
+        if (clickX >= cx - 100 && clickX <= cx + 80 && clickY >= cy + 25 && clickY <= cy + 70) {
+          setSelectedObject('tv_unit');
+        }
+        if (clickX >= cx + 100 && clickX <= cx + 180 && clickY >= cy - 110 && clickY <= cy + 70) {
+          setSelectedObject('wardrobe_living');
+        }
       }
 
       if (activeRoom === 'kitchen') {
-        // approximate kitchen drawer hitboxes
-        const w = canvas.width;
-        const h = canvas.height;
-        const cx = w / 2 + (200 - 140) * 2.2 * 1.15; 
-        const cy = h / 2 - 10 - 16 * 1.3 * 1.15;
         const bx = cx - 130;
         const by = cy + 5;
         const bw = 260;
@@ -236,6 +281,10 @@ const AIModularStudio: React.FC = () => {
         const cw = (bw - 6) / cols;
         const dh = (bh - 6) / 2;
         
+        if (clickX >= bx && clickX <= bx + bw && clickY >= by && clickY <= by + bh) {
+           setSelectedObject('kitchen_base');
+        }
+
         let clickedDrawer = false;
         for (let i = 0; i < cols; i++) {
           const cx_i = bx + 3 + i * cw;
@@ -503,11 +552,47 @@ const AIModularStudio: React.FC = () => {
 
         // Detailed drawing helpers to match the reference image style
         const outlineColor = '#8B5A2B'; // Brown wood frame
-        const accentColor = blendColors(activeColor, '#E3C666', 0.6); // Yellow/Gold tint
+        
+        const drawMaterial = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, materialName: string, isAccent = false) => {
+          if (materialName === 'Solid Wood') {
+            ctx.fillStyle = isAccent ? '#A0522D' : '#8B4513';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 1;
+            for(let i=x+4; i<x+w-2; i+=8) {
+              ctx.beginPath(); ctx.moveTo(i, y); ctx.lineTo(i, y+h); ctx.stroke();
+            }
+          } else if (materialName === 'Plywood') {
+            ctx.fillStyle = isAccent ? '#E8E8D0' : '#F5F5DC';
+            ctx.fillRect(x, y, w, h);
+          } else if (materialName === 'MDF') {
+            ctx.fillStyle = isAccent ? '#C1A37B' : '#D2B48C';
+            ctx.fillRect(x, y, w, h);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(x, y, w*0.3, h);
+          } else if (materialName === 'PVC') {
+            ctx.fillStyle = isAccent ? '#4E342E' : '#3E2723';
+            ctx.fillRect(x, y, w, h);
+            ctx.fillStyle = 'rgba(255,255,255,0.02)';
+            for(let i=y; i<y+h; i+=4) {
+              ctx.fillRect(x, i, w, 1);
+            }
+          } else {
+            const accentColor = blendColors(activeColor, '#E3C666', 0.6);
+            ctx.fillStyle = isAccent ? accentColor : activeColor;
+            ctx.fillRect(x, y, w, h);
+          }
+        };
 
-        const drawDetailedWardrobe = (wx: number, wy: number, ww: number, wh: number, openProgress = 0) => {
+        const drawDetailedWardrobe = (wx: number, wy: number, ww: number, wh: number, openProgress = 0, materialName = 'Plywood') => {
           ctx.fillStyle = outlineColor;
           ctx.fillRect(wx, wy, ww, wh); // Outer frame
+          
+          if (selectedObject === 'wardrobe_living' || selectedObject === 'wardrobe_bedroom') {
+             // Selection highlight
+             ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+             ctx.strokeRect(wx-2, wy-2, ww+4, wh+4);
+          }
           
           const innerX = wx + 3;
           const innerY = wy + 3;
@@ -518,14 +603,12 @@ const AIModularStudio: React.FC = () => {
 
           // LEFT COLUMN
           const topDoorH = innerH * 0.6;
-          ctx.fillStyle = activeColor;
-          ctx.fillRect(innerX, innerY, leftW, topDoorH);
+          drawMaterial(ctx, innerX, innerY, leftW, topDoorH, materialName, false);
           ctx.strokeStyle = outlineColor;
           ctx.strokeRect(innerX, innerY, leftW, topDoorH);
           
           // Accent strip
-          ctx.fillStyle = accentColor;
-          ctx.fillRect(innerX + leftW/2, innerY, leftW/2, topDoorH);
+          drawMaterial(ctx, innerX + leftW/2, innerY, leftW/2, topDoorH, materialName, true);
           ctx.strokeRect(innerX + leftW/2, innerY, leftW/2, topDoorH);
           
           // Handles
@@ -537,10 +620,8 @@ const AIModularStudio: React.FC = () => {
           const drawerH = (innerH * 0.4) / 3;
           for (let i = 0; i < 3; i++) {
             const dY = innerY + topDoorH + (i * drawerH);
-            // Pull drawer out to the left slightly when opening
             const wOffset = openProgress * -15; 
-            ctx.fillStyle = i === 1 ? accentColor : activeColor;
-            ctx.fillRect(innerX + wOffset, dY, leftW, drawerH);
+            drawMaterial(ctx, innerX + wOffset, dY, leftW, drawerH, materialName, i === 1);
             ctx.strokeRect(innerX + wOffset, dY, leftW, drawerH);
             // Horizontal handle
             ctx.fillStyle = outlineColor;
@@ -551,45 +632,42 @@ const AIModularStudio: React.FC = () => {
           const rightDoorW = rightW / 2;
           const doorInnerX = innerX + leftW;
           
-          // Draw Wardrobe Interior (Background shelves)
-          ctx.fillStyle = '#1a1a1a'; // Dark interior shadow
+          // Draw Wardrobe Interior
+          ctx.fillStyle = '#1a1a1a';
           ctx.fillRect(doorInnerX, innerY, rightW, innerH);
           ctx.fillStyle = outlineColor;
-          ctx.fillRect(doorInnerX, innerY + innerH * 0.3, rightW, 3); // Shelf 1
-          ctx.fillRect(doorInnerX, innerY + innerH * 0.6, rightW, 3); // Shelf 2
+          ctx.fillRect(doorInnerX, innerY + innerH * 0.3, rightW, 3);
+          ctx.fillRect(doorInnerX, innerY + innerH * 0.6, rightW, 3);
           
-          // Draw shirts hanging on top shelf
-          ctx.fillStyle = activeColor;
-          ctx.fillRect(doorInnerX + 5, innerY + innerH * 0.1, rightW - 10, innerH * 0.15);
+          drawMaterial(ctx, doorInnerX + 5, innerY + innerH * 0.1, rightW - 10, innerH * 0.15, materialName, false);
           
-          // Animate doors opening (width shrinks to simulate swinging open)
           const animW = Math.max(1, rightDoorW * (1 - (openProgress * 0.85)));
           
-          // Left tall door (swings left)
-          ctx.fillStyle = accentColor;
-          ctx.fillRect(doorInnerX, innerY, animW, innerH);
+          drawMaterial(ctx, doorInnerX, innerY, animW, innerH, materialName, true);
           ctx.strokeRect(doorInnerX, innerY, animW, innerH);
           
-          // Right tall door (swings right)
           const rightDoorX = doorInnerX + rightW - animW;
-          ctx.fillStyle = activeColor;
-          ctx.fillRect(rightDoorX, innerY, animW, innerH);
+          drawMaterial(ctx, rightDoorX, innerY, animW, innerH, materialName, false);
           ctx.strokeRect(rightDoorX, innerY, animW, innerH);
 
-          // Tall door handles
           ctx.fillStyle = outlineColor;
           ctx.fillRect(doorInnerX + animW - 4, innerY + innerH/2 - 30, 2, 60);
           ctx.fillRect(rightDoorX + 2, innerY + innerH/2 - 30, 2, 60);
 
-          // Legs
           ctx.fillStyle = outlineColor;
           ctx.beginPath(); ctx.moveTo(wx + 8, wy + wh); ctx.lineTo(wx + 16, wy + wh); ctx.lineTo(wx + 12, wy + wh + 12); ctx.lineTo(wx + 4, wy + wh + 12); ctx.fill();
           ctx.beginPath(); ctx.moveTo(wx + ww - 16, wy + wh); ctx.lineTo(wx + ww - 8, wy + wh); ctx.lineTo(wx + ww - 4, wy + wh + 12); ctx.lineTo(wx + ww - 12, wy + wh + 12); ctx.fill();
         };
 
-        const drawDetailedCabinet = (bx: number, by: number, bw: number, bh: number, isAnimatedDrawer = false, individualDrawersProgress?: number[]) => {
+        const drawDetailedCabinet = (bx: number, by: number, bw: number, bh: number, isAnimatedDrawer = false, individualDrawersProgress?: number[], materialName = 'Plywood') => {
           ctx.fillStyle = outlineColor;
           ctx.fillRect(bx, by, bw, bh);
+          
+          if (selectedObject === 'tv_unit' || selectedObject === 'kitchen_base') {
+             ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+             ctx.strokeRect(bx-2, by-2, bw+4, bh+4);
+          }
+
           const cols = 3;
           const cw = (bw - 6) / cols;
           for (let i = 0; i < cols; i++) {
@@ -604,8 +682,8 @@ const AIModularStudio: React.FC = () => {
                  prog = kitchenDrawerProgress;
               }
               const yOffset = prog * 15;
-              ctx.fillStyle = (i + j) % 2 === 0 ? activeColor : accentColor;
-              ctx.fillRect(cx_i, dy_j + yOffset, cw, dh);
+              
+              drawMaterial(ctx, cx_i, dy_j + yOffset, cw, dh, materialName, (i + j) % 2 !== 0);
               ctx.strokeRect(cx_i, dy_j + yOffset, cw, dh);
               ctx.fillStyle = outlineColor;
               ctx.fillRect(cx_i + cw/2 - 12, dy_j + yOffset + dh/2 - 1, 24, 2);
@@ -630,10 +708,10 @@ const AIModularStudio: React.FC = () => {
           ctx.strokeRect(cx - 85, cy - 40, 150, 60);
 
           // Detailed Table / TV Cabinet (Now animated!)
-          drawDetailedCabinet(cx - 100, cy + 25, 180, 45, true);
+          drawDetailedCabinet(cx - 100, cy + 25, 180, 45, true, undefined, objectMaterials['tv_unit']);
 
           // Detailed Wardrobe next to TV Unit
-          drawDetailedWardrobe(cx + 100, cy - 110, 80, 180, wardrobeDoorProgress);
+          drawDetailedWardrobe(cx + 100, cy - 110, 80, 180, wardrobeDoorProgress, objectMaterials['wardrobe_living']);
 
         } else if (activeRoom === 'kitchen') {
           // Window/Backsplash
@@ -677,7 +755,7 @@ const AIModularStudio: React.FC = () => {
           ctx.fillRect(cx - 90, cy - 15, 25, 10); // Pan/Pot
 
           // Detailed Modular base boxes
-          drawDetailedCabinet(cx - 130, cy + 5, 260, 75, false, kitchenDrawersProgress);
+          drawDetailedCabinet(cx - 130, cy + 5, 260, 75, false, kitchenDrawersProgress, objectMaterials['kitchen_base']);
 
           // Oven (placed in middle section of base cabinets)
           const ovenX = cx - 35;
@@ -723,10 +801,14 @@ const AIModularStudio: React.FC = () => {
           const pillowGrey = '#A1A6BC';
 
           // Frame Base & Legs
-          ctx.fillStyle = darkFrame;
-          ctx.fillRect(bedX + 10, bedY, bedW - 10, 15); // Frame base
-          ctx.fillRect(bedX + 10, bedY + 15, 8, 15); // Left leg
-          ctx.fillRect(bedX + bedW - 15, bedY + 15, 8, 15); // Right leg
+          drawMaterial(ctx, bedX + 10, bedY, bedW - 10, 15, objectMaterials['bed'], false);
+          drawMaterial(ctx, bedX + 10, bedY + 15, 8, 15, objectMaterials['bed'], false);
+          drawMaterial(ctx, bedX + bedW - 15, bedY + 15, 8, 15, objectMaterials['bed'], false);
+          
+          if (selectedObject === 'bed') {
+             ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+             ctx.strokeRect(bedX, bedY, bedW, 15);
+          }
           
           // Headboard (slightly rounded top)
           ctx.beginPath();
@@ -734,6 +816,8 @@ const AIModularStudio: React.FC = () => {
           ctx.lineTo(bedX, bedY - 45);
           ctx.arcTo(bedX, bedY - 55, bedX + 15, bedY - 55, 10);
           ctx.lineTo(bedX + 15, bedY + 15);
+          // Just use drawMaterial logic for headboard path manually
+          ctx.fillStyle = objectMaterials['bed'] === 'Solid Wood' ? '#8B4513' : objectMaterials['bed'] === 'Plywood' ? '#F5F5DC' : objectMaterials['bed'] === 'MDF' ? '#D2B48C' : objectMaterials['bed'] === 'PVC' ? '#3E2723' : darkFrame;
           ctx.fill();
           
           // Mattress
@@ -759,16 +843,16 @@ const AIModularStudio: React.FC = () => {
           ctx.fill();
 
           // Detailed Wardrobe
-          drawDetailedWardrobe(cx + 100, cy - 110, 90, 180, wardrobeDoorProgress);
+          drawDetailedWardrobe(cx + 100, cy - 110, 90, 180, wardrobeDoorProgress, objectMaterials['wardrobe_bedroom']);
         }
 
         // Ambiance filters
         if (lighting.includes('Warm')) {
           ctx.fillStyle = 'rgba(255, 90, 31, 0.08)';
-          ctx.fill();
+          ctx.fillRect(0, 0, w, h);
         } else if (lighting.includes('Cool')) {
           ctx.fillStyle = 'rgba(100, 200, 255, 0.05)';
-          ctx.fill();
+          ctx.fillRect(0, 0, w, h);
         }
       };
 
@@ -811,7 +895,7 @@ const AIModularStudio: React.FC = () => {
     render();
 
     return () => cancelAnimationFrame(animFrameId);
-  }, [activeRoom, transitionProgress, morphProgress, paintColor, selectedMaterial, lighting, handleStyle, wardrobeDoorProgress, kitchenDrawerProgress, kitchenDrawersProgress, windowProgress, zoom, sliderPos, yaw, pitch, bedOffset]);
+  }, [activeRoom, transitionProgress, morphProgress, paintColor, selectedMaterial, lighting, handleStyle, wardrobeDoorProgress, kitchenDrawerProgress, kitchenDrawersProgress, windowProgress, zoom, sliderPos, yaw, pitch, bedOffset, selectedObject, objectMaterials]);
 
   const handleCaptureSnapshot = () => {
     const canvas = canvasRef.current;
