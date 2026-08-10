@@ -930,9 +930,8 @@ const AIModularStudio: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-brandLight-border pb-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-extrabold font-display text-brandDark-black flex items-center space-x-2">
-            <Box className="w-8 h-8 text-primary animate-pulse-slow" />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-brandDark-black to-gray-600">
-              🏠 AI Modular Interior Design Studio
+              AI Interior Studio
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 font-medium">
