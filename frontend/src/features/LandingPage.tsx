@@ -63,11 +63,20 @@ const LandingPage: React.FC<LandingPageProps> = ({
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-16 z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left Column (Copy and actions) */}
-          <div className="lg:col-span-7 text-left space-y-6">
+          <motion.div 
+            className="lg:col-span-7 text-left space-y-6"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+            }}
+          >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+              }}
               className="space-y-4"
             >
               <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold uppercase tracking-wider font-display">
@@ -85,9 +94,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
+              variants={{
+                hidden: { opacity: 0, y: 15 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+              }}
               className="flex flex-wrap gap-3"
             >
               <button
@@ -103,7 +113,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 AI Cost Estimator
               </button>
             </motion.div>
-          </div>
+          </motion.div>
 
           {/* Right Column (Circular graphics & Portrait layout from Ripon Ahmed's design) */}
           <div className="lg:col-span-5 relative flex justify-center items-center">
@@ -117,8 +127,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
+              animate={{ opacity: 1, scale: 1, y: [0, -8, 0] }}
+              transition={{ duration: 0.7, ease: 'easeOut', y: { repeat: Infinity, duration: 4, ease: "easeInOut" } }}
               className="relative w-80 h-80 flex items-center justify-center"
             >
               {/* Thick glowing orange border background circle */}
@@ -160,7 +170,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.25 }}
-            className="max-w-7xl mx-auto p-2.5 rounded-3xl bg-white border border-brandLight-border shadow-2xl flex flex-col md:flex-row gap-2 z-10 glass-panel"
+            className="max-w-7xl mx-auto p-2.5 rounded-3xl bg-white border border-brandLight-border shadow-2xl flex flex-col md:flex-row gap-2 z-10 glass-panel focus-within:ring-2 focus-within:ring-primary/50 transition-shadow duration-300"
           >
             {/* Category selection */}
             <div className="flex-1 flex items-center px-4 py-2 border-r border-brandLight-border/60 md:border-r last:border-0">
@@ -234,6 +244,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
             <motion.div
               key={i}
               whileHover={{ y: -6, borderColor: '#FF5722' }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.4 }}
               onClick={() => {
                 if (action.view === 'marketplace') {
                   if (action.tab) setMarketplaceTab(action.tab as any);
@@ -242,7 +256,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 }
                 setCurrentView(action.view);
               }}
-              className="group cursor-pointer rounded-3xl p-6 border border-brandDark-border/60 bg-brandDark-charcoal/50 hover:bg-brandDark-charcoal transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-48 glass-panel light-theme:bg-brandLight-panel light-theme:border-brandLight-border"
+              className="group cursor-pointer rounded-3xl p-6 border border-brandDark-border/60 bg-brandDark-charcoal/50 hover:bg-brandDark-charcoal transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-48 glass-panel hover-lift light-theme:bg-brandLight-panel light-theme:border-brandLight-border"
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-30 group-hover:opacity-60 transition-opacity`}></div>
               <div className="relative space-y-2">
@@ -287,9 +301,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
               badge: "Financial Security"
             }
           ].map((item, idx) => (
-            <div
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.15, duration: 0.5 }}
               key={idx}
-              className="p-8 rounded-3xl border border-brandDark-border/60 bg-brandDark-charcoal/40 hover-card glass-panel flex flex-col justify-between h-72 light-theme:bg-brandLight-panel light-theme:border-brandLight-border"
+              className="p-8 rounded-3xl border border-brandDark-border/60 bg-brandDark-charcoal/40 hover-card glass-panel hover-lift flex flex-col justify-between h-72 light-theme:bg-brandLight-panel light-theme:border-brandLight-border"
             >
               <div className="space-y-4">
                 <span className="inline-block px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider">
@@ -304,7 +322,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 <span>Learn details</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
