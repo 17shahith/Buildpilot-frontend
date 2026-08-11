@@ -31,8 +31,9 @@ const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="border-t border-brandDark-border bg-brandDark-black text-gray-400 py-16 transition-colors duration-300 light-theme:bg-brandLight-panel light-theme:border-brandLight-border light-theme:text-gray-600">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className="relative border-t border-brandDark-border bg-brandDark-black text-gray-400 py-16 transition-colors duration-500 overflow-hidden light-theme:bg-gradient-to-b light-theme:from-brandLight-panel light-theme:to-white light-theme:border-brandLight-border/50 light-theme:text-gray-600">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">

@@ -349,10 +349,12 @@ function App() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Background Decorative Mesh Elements */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-brandLight-slate transition-colors duration-300">
-        {/* Ambient Top Glow Grid */}
-        <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-primary/5 filter blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-primary/5 filter blur-[100px] pointer-events-none"></div>
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-brandLight-slate transition-colors duration-500">
+        <div className="ambient-glow-primary top-[-20%] left-[-10%] animate-pulse-slow"></div>
+        <div className="ambient-glow-secondary bottom-[-20%] right-[-10%] animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
+        <div className="ambient-glow-accent top-[40%] left-[60%] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+        {/* Subtle dot pattern overlay for texture */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
       </div>
 
       {/* Global Navbar */}

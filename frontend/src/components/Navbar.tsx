@@ -28,7 +28,7 @@ const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-brandLight-border bg-white/85 backdrop-blur-md transition-colors duration-300">
+    <nav className="sticky top-0 z-50 border-b border-white/40 premium-glass transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -60,10 +60,10 @@ const Navbar: React.FC<NavbarProps> = ({
                   }
                   setCurrentView(item.id);
                 }}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-xl text-sm font-semibold tracking-wide font-display transition-all duration-250 ${
+                className={`relative flex items-center space-x-1.5 px-4 py-2 rounded-xl text-sm font-semibold tracking-wide font-display transition-all duration-300 ${
                   currentView === item.id
-                    ? 'bg-primary/10 text-primary border border-primary/20 shadow-glow/10'
-                    : 'text-gray-600 hover:text-brandDark-black hover:bg-brandDark-black/5'
+                    ? 'bg-gradient-to-r from-primary/10 to-transparent text-primary border border-primary/20 shadow-sm'
+                    : 'text-gray-600 hover:text-brandDark-black hover:bg-gray-100/50 hover:-translate-y-0.5'
                 }`}
               >
                 {item.icon && <span className="mr-1">{item.icon}</span>}
@@ -97,11 +97,11 @@ const Navbar: React.FC<NavbarProps> = ({
                 setMarketplaceTab('pros');
                 setCurrentView('marketplace');
               }}
-              className="relative px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-dark text-white font-semibold text-sm font-display tracking-wide shadow-glow transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] overflow-hidden group"
+              className="relative px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary via-primary-light to-primary-dark text-white font-semibold text-sm font-display tracking-wide shadow-glow-lg transition-all duration-500 hover:shadow-glow hover:-translate-y-0.5 active:scale-95 overflow-hidden group bg-[length:200%_auto] hover:bg-[center_right_1rem]"
             >
-              <span className="absolute inset-0 bg-white/20 translate-y-full transition-transform duration-300 group-hover:translate-y-0"></span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
               <span className="relative flex items-center">
-                Hire a Pro <span className="ml-1.5">→</span>
+                Hire a Pro <span className="ml-1.5 group-hover:translate-x-1 transition-transform duration-300">→</span>
               </span>
             </button>
 
