@@ -35,16 +35,45 @@ const AIChatbot: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Connect to server using centralized API client
-      const data = await api.post('api/chat', { message: normalizedText }, { retries: 1 });
-      const responseText = typeof data?.response === 'string'
-        ? data.response.slice(0, 4000)
-        : 'The assistant returned an invalid response.';
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Gemini API key is missing.');
+      }
+
+      // Convert previous messages to Gemini format (role: 'user' | 'model')
+      const chatHistory = messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: 'You are the BuildBridge Copilot. Answer questions about building budgets, room scans, defect detection, or finding general contractors. Be concise and helpful.' }]
+          },
+          contents: [
+            ...chatHistory,
+            { role: 'user', parts: [{ text: normalizedText }] }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'The assistant returned an invalid response.';
       setMessages(prev => [...prev, { sender: 'ai', text: responseText }]);
-    } catch {
-      // Offline fallback simulation
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      // Fallback
       setTimeout(() => {
-        let answer = "I'm currently operating in offline mode. Please check your network connection or make sure the production API is online.";
+        let answer = `Error: ${error.message || "Unable to connect to AI."} Please check your API key and balance.`;
          const lower = normalizedText.toLowerCase();
         
         if (lower.includes('cost') || lower.includes('estimate') || lower.includes('budget')) {
