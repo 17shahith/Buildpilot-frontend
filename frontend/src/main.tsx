@@ -2,6 +2,7 @@ import { Component, StrictMode, type PropsWithChildren } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { AuthProvider } from './auth/AuthProvider'
 
 class AppErrorBoundary extends Component<PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
@@ -36,7 +37,9 @@ class AppErrorBoundary extends Component<PropsWithChildren, { hasError: boolean 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </AppErrorBoundary>
   </StrictMode>,
 )

@@ -11,144 +11,9 @@ import DashboardClient from './features/DashboardClient';
 import DashboardProfessional from './features/DashboardProfessional';
 import DashboardAdmin from './features/DashboardAdmin';
 import HomeCare from './features/HomeCare';
-import { Lock, User, Eye, EyeOff, Info, LogOut } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { api } from './utils/api';
-import type { AuthenticatedUser } from './types/auth';
-
-interface LoginGateProps {
-  requiredRole: 'client' | 'pro' | 'admin';
-  onLoginSuccess: (user: AuthenticatedUser) => void;
-}
-
-const LoginGate: React.FC<LoginGateProps> = ({ requiredRole, onLoginSuccess }) => {
-  const [usernameInput, setUsernameInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoginLoading, setIsLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState('');
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    setIsLoginLoading(true);
-
-    try {
-      const response = await api.post('api/auth/login', {
-        username: usernameInput.trim(),
-        password: passwordInput,
-      }, { retries: 1 });
-      const user = response?.user ?? response;
-      const backendRole = user?.role;
-      const normalizedRole = backendRole === 'CLIENT' ? 'client' : backendRole === 'PROFESSIONAL' ? 'pro' : backendRole === 'ADMIN' ? 'admin' : backendRole;
-
-      if (normalizedRole === requiredRole) {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.6 }
-        });
-        if (response?.token) api.setAccessToken(response.token);
-        user.role = normalizedRole;
-        onLoginSuccess(user as AuthenticatedUser);
-      } else {
-        setLoginError('You are not authorized for this portal.');
-      }
-    } catch {
-      setLoginError('Invalid credentials or unavailable authentication service.');
-    } finally {
-      setIsLoginLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-center min-h-[70vh] px-4">
-      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-2xl max-w-md w-full space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-[#F97316] flex items-center justify-center shadow-lg mx-auto">
-            <Lock className="w-7 h-7 text-white" />
-          </div>
-          <h2 className="text-2xl font-black font-display text-slate-900 tracking-tight mt-3">
-            Secure Portal Verification
-          </h2>
-          <p className="text-xs text-slate-500">
-            Please authorize to unlock the {requiredRole === 'admin' ? 'Admin Panel' : 'Professional Dashboard'}
-          </p>
-        </div>
-
-        <div className="bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl p-4 space-y-1">
-          <div className="flex items-center space-x-1.5 text-xs text-[#EA580C] font-extrabold uppercase">
-            <Info className="w-4 h-4" />
-            <span>Secure Sign In Required</span>
-          </div>
-          <p className="text-[10px] text-slate-600 leading-relaxed font-semibold">
-            Sign in with an account issued by the BuildPilot backend. Portal permissions are verified server-side.
-          </p>
-        </div>
-
-        <form onSubmit={handleLoginSubmit} className="space-y-4">
-          {loginError && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl text-center">
-              {loginError}
-            </div>
-          )}
-
-          <div className="space-y-1 text-xs">
-            <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Username</label>
-            <div className="relative">
-              <input
-                type="text"
-                required
-                placeholder="Enter your username..."
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-[#F97316]"
-              />
-              <User className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-            </div>
-          </div>
-
-          <div className="space-y-1 text-xs">
-            <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                placeholder="Enter password..."
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs focus:outline-none focus:border-[#F97316]"
-              />
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3.5 focus:outline-none"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4 text-slate-400" /> : <Eye className="w-4 h-4 text-slate-400" />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoginLoading}
-            className="w-full py-3 bg-[#F97316] hover:bg-[#EA580C] disabled:opacity-50 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md mt-2 flex items-center justify-center space-x-2"
-          >
-            {isLoginLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Verifying...</span>
-              </>
-            ) : (
-              <span>Verify and Access</span>
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
+import { SecurePortalVerification } from './components/auth/SecurePortalVerification';
+import { useAuth } from './auth/AuthProvider';
+import { Info, LogOut } from 'lucide-react';
 
 function App() {
   const [currentView, setCurrentView] = useState<string>('landing');
@@ -157,10 +22,7 @@ function App() {
   const [marketplaceSearch, setMarketplaceSearch] = useState<string>('');
   const [marketplaceRole, setMarketplaceRole] = useState<string>('');
 
-  // Authentication states for portals
-  const [clientSession, setClientSession] = useState<AuthenticatedUser | null>(null);
-  const [proSession, setProSession] = useState<AuthenticatedUser | null>(null);
-  const [adminSession, setAdminSession] = useState<AuthenticatedUser | null>(null);
+  const { supabaseUser, isPortalVerified, portalRole, isLoading, signInWithGoogle, signOut } = useAuth();
 
   // Listen to hash changes for simple routing
   useEffect(() => {
@@ -168,8 +30,13 @@ function App() {
       const hash = window.location.hash;
       if (hash === '#/professional/login' || hash === '#/professional/dashboard') {
         setCurrentView('dashboard-pro');
+        setRole('pro');
       } else if (hash === '#/admin/login' || hash === '#/admin/dashboard') {
         setCurrentView('dashboard-admin');
+        setRole('admin');
+      } else if (hash === '#/client/dashboard') {
+        setCurrentView('dashboard-client');
+        setRole('client');
       } else if (hash === '#/homecare') {
         setCurrentView('homecare');
       } else if (hash === '#/estimator') {
@@ -191,43 +58,77 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Restore a server-backed session after refresh. No credentials are stored
-  // in localStorage or sessionStorage.
-  useEffect(() => {
-    let cancelled = false;
-    api.get('api/auth/me', { retries: 1 })
-      .then((response) => {
-        const user = response?.user ?? response;
-        if (cancelled || !user?.role) return;
-        const backendRole = user.role;
-        user.role = backendRole === 'CLIENT' ? 'client' : backendRole === 'PROFESSIONAL' ? 'pro' : backendRole === 'ADMIN' ? 'admin' : backendRole;
-        const session = user as AuthenticatedUser;
-        if (session.role === 'client') setClientSession(session);
-        if (session.role === 'pro') setProSession(session);
-        if (session.role === 'admin') setAdminSession(session);
-        setRole(session.role);
-      })
-      .catch(() => {
-        // Anonymous visitors are expected to receive a normal login gate.
-      });
-
-    return () => { cancelled = true; };
-  }, []);
-
   // Enforce Light Theme body class injection on mount
   useEffect(() => {
     document.body.classList.add('light-theme');
   }, []);
 
-  // Handle portal session logouts
-  const handleLogout = () => {
-    void api.post('api/auth/logout', {}, { retries: 1 }).catch(() => undefined);
-    api.clearAccessToken();
-    setClientSession(null);
-    setProSession(null);
-    setAdminSession(null);
+  // Handle logout
+  const handleLogout = async () => {
+    await signOut();
     setRole('client');
     window.location.hash = '#/';
+  };
+
+  // Google Login Component for unauthenticated users trying to access dashboard
+  const GoogleLoginPrompt = ({ requiredRole }: { requiredRole: string }) => (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+      <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 text-center max-w-sm w-full">
+        <h2 className="text-2xl font-black text-slate-900 mb-2">Authentication Required</h2>
+        <p className="text-sm text-slate-500 mb-6">
+          Please sign in with Google to access the {requiredRole} portal.
+        </p>
+        <button
+          onClick={signInWithGoogle}
+          className="flex items-center justify-center w-full px-4 py-3 space-x-2 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 font-bold text-slate-700 transition-colors"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          <span>Sign in with Google</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderDashboardWrapper = (dashboard: React.ReactNode, requiredRole: 'client' | 'pro' | 'admin') => {
+    if (isLoading) {
+      return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
+    }
+
+    // Tier 1: Check Supabase Auth
+    if (!supabaseUser) {
+      return <GoogleLoginPrompt requiredRole={requiredRole} />;
+    }
+
+    // Tier 2: Check Portal Authorization (Only for Pro and Admin, skipping for client if you want, but prompt implies all portals)
+    // The prompt says "Secure Portal Verification screen must become the first protected module shown after a user successfully authenticates"
+    if (!isPortalVerified || portalRole !== requiredRole) {
+      return <SecurePortalVerification requiredRole={requiredRole} />;
+    }
+
+    // Successfully passed both tiers
+    return (
+      <div className="space-y-4">
+        <div className="bg-[#FFF7ED] border-b border-[#FED7AA] py-3.5 px-6 flex justify-between items-center max-w-7xl mx-auto rounded-2xl mt-4 shadow-sm">
+          <div className="flex items-center space-x-2 text-xs font-bold text-[#EA580C]">
+            <Info className="w-4 h-4" />
+            <span>Logged in as: {supabaseUser.user_metadata?.full_name || supabaseUser.email} ({portalRole})</span>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#EA580C] hover:bg-[#EA580C]/90 text-white rounded-lg text-xs font-bold transition-all"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
+          </button>
+        </div>
+        {dashboard}
+      </div>
+    );
   };
 
   // Simple Router Switcher
@@ -242,12 +143,9 @@ function App() {
             setMarketplaceRole={setMarketplaceRole}
           />
         );
-      case 'estimator':
-        return <AIEstimator />;
-      case 'ar':
-        return <ARVisualizer />;
-      case 'studio':
-        return <AIInteriorStudio />;
+      case 'estimator': return <AIEstimator />;
+      case 'ar': return <ARVisualizer />;
+      case 'studio': return <AIInteriorStudio />;
       case 'marketplace':
         return (
           <Marketplace
@@ -259,81 +157,13 @@ function App() {
             setFilterRole={setMarketplaceRole}
           />
         );
-      case 'homecare':
-        return <HomeCare />;
+      case 'homecare': return <HomeCare />;
       case 'dashboard-client':
-        if (!clientSession) {
-          return (
-            <LoginGate
-              requiredRole="client"
-              onLoginSuccess={(user) => {
-                setClientSession(user);
-                setRole('client');
-              }}
-            />
-          );
-        }
-        return <DashboardClient />;
+        return renderDashboardWrapper(<DashboardClient />, 'client');
       case 'dashboard-pro':
-        if (!proSession) {
-          return (
-            <LoginGate
-              requiredRole="pro"
-              onLoginSuccess={(user) => {
-                setProSession(user);
-                setRole('pro');
-              }}
-            />
-          );
-        }
-        return (
-          <div className="space-y-4">
-            <div className="bg-[#FFF7ED] border-b border-[#FED7AA] py-3.5 px-6 flex justify-between items-center max-w-7xl mx-auto rounded-2xl mt-4 shadow-sm">
-              <div className="flex items-center space-x-2 text-xs font-bold text-[#EA580C]">
-                <Info className="w-4 h-4" />
-                <span>Logged in as: {proSession.fullName}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#EA580C] hover:bg-[#EA580C]/90 text-white rounded-lg text-xs font-bold transition-all"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Logout Portal</span>
-              </button>
-            </div>
-            <DashboardProfessional />
-          </div>
-        );
+        return renderDashboardWrapper(<DashboardProfessional />, 'pro');
       case 'dashboard-admin':
-        if (!adminSession) {
-          return (
-            <LoginGate
-              requiredRole="admin"
-              onLoginSuccess={(user) => {
-                setAdminSession(user);
-                setRole('admin');
-              }}
-            />
-          );
-        }
-        return (
-          <div className="space-y-4">
-            <div className="bg-[#FFF7ED] border-b border-[#FED7AA] py-3.5 px-6 flex justify-between items-center max-w-7xl mx-auto rounded-2xl mt-4 shadow-sm">
-              <div className="flex items-center space-x-2 text-xs font-bold text-[#EA580C]">
-                <Info className="w-4 h-4" />
-                <span>Logged in as Admin: {adminSession.fullName}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#EA580C] hover:bg-[#EA580C]/90 text-white rounded-lg text-xs font-bold transition-all"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Logout Portal</span>
-              </button>
-            </div>
-            <DashboardAdmin />
-          </div>
-        );
+        return renderDashboardWrapper(<DashboardAdmin />, 'admin');
       default:
         return (
           <LandingPage
@@ -348,16 +178,12 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Background Decorative Mesh Elements */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-brandLight-slate transition-colors duration-500">
         <div className="ambient-glow-primary top-[-20%] left-[-10%] animate-pulse-slow"></div>
         <div className="ambient-glow-secondary bottom-[-20%] right-[-10%] animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
         <div className="ambient-glow-accent top-[40%] left-[60%] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
-        {/* Subtle dot pattern overlay for texture */}
         <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
       </div>
-
-      {/* Global Navbar */}
       <div className="relative z-50">
         <Navbar
           currentView={currentView}
@@ -367,18 +193,12 @@ function App() {
           setMarketplaceTab={setMarketplaceTab}
         />
       </div>
-
-      {/* Main Content Area */}
       <main className="flex-grow relative z-10">
         {renderActiveView()}
       </main>
-
-      {/* Global Footer */}
       <div className="relative z-10">
         <Footer />
       </div>
-
-      {/* Floating AI Chat Assistant */}
       <div className="relative z-50">
         <AIChatbot />
       </div>
