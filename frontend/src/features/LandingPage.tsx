@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, Cpu, Eye, Sparkles, Shield, Wrench, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { InteractiveGraph } from '../components/InteractiveGraph';
 
 interface LandingPageProps {
   setCurrentView: (view: string) => void;
@@ -51,18 +52,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             </div>
           </div>
 
-          {/* Right Hero Image */}
-          <div className="lg:col-span-5 relative flex justify-center items-center">
-            {/* Geometric accents matching the visual design */}
-            <div className="absolute w-72 h-72 rounded-full border border-orange-100 animate-pulse-slow"></div>
-            <div className="absolute w-96 h-96 rounded-full border border-slate-100"></div>
-            
-            <div className="relative w-80 h-80 flex items-center justify-center">
-              <div className="absolute w-72 h-72 rounded-full bg-gradient-to-br from-[#F97316] to-[#EA580C] opacity-5 blur-xl"></div>
-              <div className="absolute w-[260px] h-[260px] rounded-full border-[8px] border-orange-50 bg-orange-100/30 flex items-center justify-center">
-                <Cpu className="w-24 h-24 text-[#F97316] animate-pulse" />
-              </div>
-            </div>
+          {/* Right Hero Interactive Graph */}
+          <div className="lg:col-span-5 relative h-[380px] w-full flex justify-center items-center">
+            <InteractiveGraph preset="landing" interactive={true} />
           </div>
         </div>
       </section>
@@ -160,6 +152,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Ecosystem Network Section */}
+      <section className="py-20 bg-slate-50 border-t border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 space-y-10">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="text-xs uppercase font-extrabold tracking-widest text-[#F97316]">
+              CONNECTED PLATFORM
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#0F172A] tracking-tight">
+              Interactive Construction Ecosystem
+            </h2>
+            <p className="text-gray-650 text-sm font-semibold text-gray-500">
+              Explore how BuildPilot connects all stages of construction project execution. Hover over any node to inspect descriptions and tools.
+            </p>
+          </div>
+          <div className="h-[500px] w-full shadow-lg rounded-3xl bg-white p-4">
+            <InteractiveGraph preset="landing" />
           </div>
         </div>
       </section>

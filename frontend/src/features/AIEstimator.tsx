@@ -3,6 +3,8 @@ import { Cpu, IndianRupee, Hammer, BarChart3, AlertCircle, FileText, CheckCircle
 import confetti from 'canvas-confetti';
 import { api } from '../utils/api';
 import { clientMockService } from '../services/clientMockService';
+import { InteractiveGraph } from '../components/InteractiveGraph';
+import { Layers } from 'lucide-react';
 
 const segmentColors = [
   '#FF5722', // Excavation & Foundations
@@ -41,7 +43,7 @@ const AIEstimator: React.FC = () => {
   const [customQtys, setCustomQtys] = useState<Record<string, number>>({});
 
   // Active Tab state
-  const [activeTab, setActiveTab] = useState<'visual' | 'materials' | 'optimizations'>('visual');
+  const [activeTab, setActiveTab] = useState<'visual' | 'materials' | 'optimizations' | 'pipeline'>('visual');
   // Donut chart active segment hover state
   const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
 
@@ -558,6 +560,17 @@ const AIEstimator: React.FC = () => {
                 <Sparkles className="w-4 h-4" />
                 <span>AI Suggestions</span>
               </button>
+              <button
+                onClick={() => setActiveTab('pipeline')}
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center space-x-1.5 ${
+                  activeTab === 'pipeline'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-400 hover:text-white light-theme:hover:text-brandDark-black'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>AI Pipeline</span>
+              </button>
             </div>
 
             {/* TAB CONTENTS */}
@@ -754,6 +767,19 @@ const AIEstimator: React.FC = () => {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: AI PIPELINE */}
+              {activeTab === 'pipeline' && (
+                <div className="space-y-4 animate-fade-in">
+                  <h4 className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                    <Layers className="w-3.5 h-3.5 text-primary" />
+                    <span>Cost Estimation Neural Pipeline</span>
+                  </h4>
+                  <div className="h-56 w-full border border-brandDark-border/30 light-theme:border-brandLight-border/35 rounded-3xl overflow-hidden bg-brandDark-black/20 light-theme:bg-brandLight-slate/30">
+                    <InteractiveGraph preset="ai-estimator" interactive={false} />
                   </div>
                 </div>
               )}

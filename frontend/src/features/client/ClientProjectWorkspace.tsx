@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { clientMockService, ClientProject } from '../../services/clientMockService';
 import { ChevronLeft, Info, CheckCircle2, AlertCircle, FileText, Send, Paperclip, DollarSign, Upload, Star, Clock, Heart, MessageSquare } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { InteractiveGraph } from '../../components/InteractiveGraph';
 
 interface ClientProjectWorkspaceProps {
   projectId: string;
@@ -141,7 +142,7 @@ export const ClientProjectWorkspace: React.FC<ClientProjectWorkspaceProps> = ({
     alert('Thank you! Your feedback has been recorded and added to the professional profile.');
   };
 
-  const tabs = ['Overview', 'Milestones', 'Budget', 'Documents', 'Photos', 'Messages', 'Team', 'Activity'] as const;
+  const tabs = ['Overview', 'Project Map', 'Milestones', 'Budget', 'Documents', 'Photos', 'Messages', 'Team', 'Activity'] as const;
 
   return (
     <div className="space-y-6">
@@ -198,6 +199,23 @@ export const ClientProjectWorkspace: React.FC<ClientProjectWorkspaceProps> = ({
 
       {/* Dynamic Tab Body */}
       <div className="min-h-[400px]">
+        {/* PROJECT MAP TAB */}
+        {activeTab === 'Project Map' && (
+          <div className="bg-white border border-brandLight-border p-6 rounded-3xl space-y-6 shadow-sm">
+            <div className="space-y-1">
+              <h3 className="text-xs font-black text-brandDark-black uppercase tracking-wider pb-2 border-b border-slate-100">
+                Project Stage Dependencies Map
+              </h3>
+              <p className="text-xs text-slate-500 font-bold">
+                A visual network of structural project stages and deliverables milestones. Hover over any block to inspect timeline scopes.
+              </p>
+            </div>
+            <div className="h-[400px] w-full border border-slate-150 rounded-3xl overflow-hidden bg-[#FAFAFA]">
+              <InteractiveGraph preset="project-map" />
+            </div>
+          </div>
+        )}
+
         {/* OVERVIEW TAB */}
         {activeTab === 'Overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -307,6 +325,10 @@ export const ClientProjectWorkspace: React.FC<ClientProjectWorkspaceProps> = ({
               <h3 className="text-xs font-black text-brandDark-black uppercase tracking-wider pb-2 border-b border-slate-100">
                 Milestone Approval Checklist
               </h3>
+              
+              <div className="h-44 w-full border border-slate-150 rounded-2xl overflow-hidden bg-[#FAFAFA] mb-4">
+                <InteractiveGraph preset="milestones-dependency" interactive={false} />
+              </div>
               
               <div className="space-y-3">
                 {project.milestones.map((m, idx) => (
@@ -708,6 +730,12 @@ export const ClientProjectWorkspace: React.FC<ClientProjectWorkspaceProps> = ({
             <h3 className="text-xs font-black text-brandDark-black uppercase tracking-wider pb-2 border-b border-slate-100">
               Project Hired Experts
             </h3>
+
+            <div className="h-56 w-full border border-slate-150 rounded-2xl overflow-hidden bg-[#FAFAFA] mb-4">
+              <InteractiveGraph preset="pro-network" onNodeClick={(view) => {
+                if (view === 'messages') setActiveTab('Messages');
+              }} />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {project.team.map((t, i) => (
