@@ -8,6 +8,7 @@ export interface User {
   profile?: any;
   uid?: string; // For compatibility with older code, map id to uid
   displayName?: string; // For compatibility
+  photoURL?: string; // For compatibility
 }
 
 interface AuthContextType {
@@ -99,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await signInWithEmail(email, password);
   };
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (_email: string) => {
     alert("Password reset not yet implemented on the backend.");
   };
 
