@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Cpu, ArrowUpRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '../utils/api';
 
 const AIChatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);

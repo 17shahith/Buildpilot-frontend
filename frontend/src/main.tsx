@@ -1,8 +1,9 @@
 import { Component, StrictMode, type PropsWithChildren } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
-import { AuthProvider } from './auth/AuthProvider'
+import { AuthProvider } from './context/AuthContext'
 
 class AppErrorBoundary extends Component<PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
@@ -38,7 +39,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>
       <AuthProvider>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </AuthProvider>
     </AppErrorBoundary>
   </StrictMode>,

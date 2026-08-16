@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ShieldCheck, UserCheck, AlertTriangle, Coins } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useAuth } from '../context/AuthContext';
 
 const DashboardAdmin: React.FC = () => {
+  const { user } = useAuth();
   // Verification queue data
   const [prosQueue, setProsQueue] = useState([
     { id: '1', name: 'John Doe', role: 'Plumber', license: 'LP-982736', date: 'Jul 24', status: 'Pending' },
@@ -43,7 +45,7 @@ const DashboardAdmin: React.FC = () => {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white light-theme:text-brandDark-black font-display">System Operations Admin Console</h1>
+            <h1 className="text-xl font-extrabold text-white light-theme:text-brandDark-black font-display">Welcome Back, {user?.displayName || user?.email || 'Admin'} (Admin Console)</h1>
             <p className="text-xs text-gray-500 font-semibold">Security Access Level: Master Administrator</p>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import AIChatbot from './components/AIChatbot';
@@ -11,169 +12,61 @@ import DashboardClient from './features/DashboardClient';
 import DashboardProfessional from './features/DashboardProfessional';
 import DashboardAdmin from './features/DashboardAdmin';
 import HomeCare from './features/HomeCare';
-import { SecurePortalVerification } from './components/auth/SecurePortalVerification';
-import { useAuth } from './auth/AuthProvider';
+import { AuthPage } from './features/AuthPage';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
 import { Info, LogOut } from 'lucide-react';
 
 function App() {
-  const [currentView, setCurrentView] = useState<string>('landing');
+  const [currentView, setCurrentView] = useState<string>('dashboard-client');
   const [role, setRole] = useState<'client' | 'pro' | 'admin'>('client');
   const [marketplaceTab, setMarketplaceTab] = useState<'pros' | 'properties'>('pros');
   const [marketplaceSearch, setMarketplaceSearch] = useState<string>('');
   const [marketplaceRole, setMarketplaceRole] = useState<string>('');
 
-  const { supabaseUser, isPortalVerified, portalRole, isLoading, signInWithGoogle, signOut } = useAuth();
-
-  // Listen to hash changes for simple routing
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash;
-      if (hash === '#/professional/login' || hash === '#/professional/dashboard') {
-        setCurrentView('dashboard-pro');
-        setRole('pro');
-      } else if (hash === '#/admin/login' || hash === '#/admin/dashboard') {
-        setCurrentView('dashboard-admin');
-        setRole('admin');
-      } else if (hash === '#/client/dashboard') {
-        setCurrentView('dashboard-client');
-        setRole('client');
-      } else if (hash === '#/homecare') {
-        setCurrentView('homecare');
-      } else if (hash === '#/estimator') {
-        setCurrentView('estimator');
-      } else if (hash === '#/ar') {
-        setCurrentView('ar');
-      } else if (hash === '#/studio') {
-        setCurrentView('studio');
-      } else if (hash === '#/marketplace') {
-        setCurrentView('marketplace');
-      } else {
-        setCurrentView('landing');
-      }
-    };
-
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange();
-
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Enforce Light Theme body class injection on mount
   useEffect(() => {
     document.body.classList.add('light-theme');
   }, []);
 
+  // Sync role with currentView inside /main
+  useEffect(() => {
+    if (currentView === 'dashboard-client') setRole('client');
+    else if (currentView === 'dashboard-pro') setRole('pro');
+    else if (currentView === 'dashboard-admin') setRole('admin');
+  }, [currentView]);
+
+  // Sync route and currentView view-switcher
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/') {
+      setCurrentView('landing');
+    } else if (path === '/auth') {
+      setCurrentView('auth');
+    } else if (path === '/main/client') {
+      setCurrentView('dashboard-client');
+      setRole('client');
+    } else if (path === '/main/professional') {
+      setCurrentView('dashboard-pro');
+      setRole('pro');
+    } else if (path === '/main/admin') {
+      setCurrentView('dashboard-admin');
+      setRole('admin');
+    } else if (path.startsWith('/main/')) {
+      const view = path.replace('/main/', '');
+      setCurrentView(view);
+    }
+  }, [location.pathname]);
+
   // Handle logout
   const handleLogout = async () => {
-    await signOut();
+    await logout();
     setRole('client');
-    window.location.hash = '#/';
-  };
-
-  // Google Login Component for unauthenticated users trying to access dashboard
-  const GoogleLoginPrompt = ({ requiredRole }: { requiredRole: string }) => (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-      <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 text-center max-w-sm w-full">
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Authentication Required</h2>
-        <p className="text-sm text-slate-500 mb-6">
-          Please sign in with Google to access the {requiredRole} portal.
-        </p>
-        <button
-          onClick={signInWithGoogle}
-          className="flex items-center justify-center w-full px-4 py-3 space-x-2 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 font-bold text-slate-700 transition-colors"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
-          <span>Sign in with Google</span>
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderDashboardWrapper = (dashboard: React.ReactNode, requiredRole: 'client' | 'pro' | 'admin') => {
-    if (isLoading) {
-      return <div className="flex items-center justify-center min-h-[60vh]">Loading...</div>;
-    }
-
-    // Tier 1: Check Supabase Auth
-    if (!supabaseUser) {
-      return <GoogleLoginPrompt requiredRole={requiredRole} />;
-    }
-
-    // Tier 2: Check Portal Authorization (Only for Pro and Admin, skipping for client if you want, but prompt implies all portals)
-    // The prompt says "Secure Portal Verification screen must become the first protected module shown after a user successfully authenticates"
-    if (!isPortalVerified || portalRole !== requiredRole) {
-      return <SecurePortalVerification requiredRole={requiredRole} />;
-    }
-
-    // Successfully passed both tiers
-    return (
-      <div className="space-y-4">
-        <div className="bg-[#FFF7ED] border-b border-[#FED7AA] py-3.5 px-6 flex justify-between items-center max-w-7xl mx-auto rounded-2xl mt-4 shadow-sm">
-          <div className="flex items-center space-x-2 text-xs font-bold text-[#EA580C]">
-            <Info className="w-4 h-4" />
-            <span>Logged in as: {supabaseUser.user_metadata?.full_name || supabaseUser.email} ({portalRole})</span>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#EA580C] hover:bg-[#EA580C]/90 text-white rounded-lg text-xs font-bold transition-all"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
-        </div>
-        {dashboard}
-      </div>
-    );
-  };
-
-  // Simple Router Switcher
-  const renderActiveView = () => {
-    switch (currentView) {
-      case 'landing':
-        return (
-          <LandingPage
-            setCurrentView={setCurrentView}
-            setMarketplaceTab={setMarketplaceTab}
-            setMarketplaceSearch={setMarketplaceSearch}
-            setMarketplaceRole={setMarketplaceRole}
-          />
-        );
-      case 'estimator': return <AIEstimator />;
-      case 'ar': return <ARVisualizer />;
-      case 'studio': return <AIInteriorStudio />;
-      case 'marketplace':
-        return (
-          <Marketplace
-            tab={marketplaceTab}
-            setTab={setMarketplaceTab}
-            search={marketplaceSearch}
-            setSearch={setMarketplaceSearch}
-            filterRole={marketplaceRole}
-            setFilterRole={setMarketplaceRole}
-          />
-        );
-      case 'homecare': return <HomeCare />;
-      case 'dashboard-client':
-        return renderDashboardWrapper(<DashboardClient />, 'client');
-      case 'dashboard-pro':
-        return renderDashboardWrapper(<DashboardProfessional />, 'pro');
-      case 'dashboard-admin':
-        return renderDashboardWrapper(<DashboardAdmin />, 'admin');
-      default:
-        return (
-          <LandingPage
-            setCurrentView={setCurrentView}
-            setMarketplaceTab={setMarketplaceTab}
-            setMarketplaceSearch={setMarketplaceSearch}
-            setMarketplaceRole={setMarketplaceRole}
-          />
-        );
-    }
+    navigate('/');
   };
 
   return (
@@ -187,14 +80,117 @@ function App() {
       <div className="relative z-50">
         <Navbar
           currentView={currentView}
-          setCurrentView={setCurrentView}
+          setCurrentView={(view) => {
+            if (view === 'landing') navigate('/');
+            else if (view === 'auth') navigate('/auth');
+            else if (view === 'dashboard-client') navigate('/main/client');
+            else navigate(`/main/${view}`);
+          }}
           role={role}
           setRole={setRole}
           setMarketplaceTab={setMarketplaceTab}
         />
       </div>
       <main className="flex-grow relative z-10">
-        {renderActiveView()}
+        <Routes>
+          <Route path="/" element={
+            <LandingPage
+              setCurrentView={(view) => {
+                if (view === 'auth') {
+                  navigate('/auth');
+                } else if (user) {
+                  if (view === 'dashboard-client') navigate('/main/client');
+                  else navigate(`/main/${view}`);
+                } else {
+                  navigate('/auth');
+                }
+              }}
+              setMarketplaceTab={setMarketplaceTab}
+              setMarketplaceSearch={setMarketplaceSearch}
+              setMarketplaceRole={setMarketplaceRole}
+            />
+          } />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/main" element={
+            <ProtectedRoute>
+              <div className="space-y-4">
+                <div className="bg-[#FFF7ED] border-b border-[#FED7AA] py-3.5 px-6 flex justify-between items-center max-w-7xl mx-auto rounded-2xl mt-4 shadow-sm">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-[#EA580C]">
+                    <Info className="w-4 h-4" />
+                    <span>Logged in as: {user?.displayName || user?.email}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#EA580C] hover:bg-[#EA580C]/90 text-white rounded-lg text-xs font-bold transition-all"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+
+                {/* Dashboard Role Switcher Tabs */}
+                {['dashboard-client', 'dashboard-pro', 'dashboard-admin'].includes(currentView) && (
+                  <div className="max-w-7xl mx-auto px-6 mt-2">
+                    <div className="inline-flex bg-slate-100 p-1 rounded-2xl border border-slate-200/60 shadow-sm">
+                      <button
+                        onClick={() => navigate('/main/client')}
+                        className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                          location.pathname === '/main/client'
+                            ? 'bg-white text-[#F97316] shadow-sm'
+                            : 'text-gray-500 hover:text-slate-900'
+                        }`}
+                      >
+                        Client Portal
+                      </button>
+                      <button
+                        onClick={() => navigate('/main/professional')}
+                        className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                          location.pathname === '/main/professional'
+                            ? 'bg-white text-[#F97316] shadow-sm'
+                            : 'text-gray-500 hover:text-slate-900'
+                        }`}
+                      >
+                        Professional Portal
+                      </button>
+                      <button
+                        onClick={() => navigate('/main/admin')}
+                        className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                          location.pathname === '/main/admin'
+                            ? 'bg-white text-[#F97316] shadow-sm'
+                            : 'text-gray-500 hover:text-slate-900'
+                        }`}
+                      >
+                        Admin Portal
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <Outlet />
+              </div>
+            </ProtectedRoute>
+          }>
+            <Route index element={<Navigate to="client" replace />} />
+            <Route path="client" element={<DashboardClient />} />
+            <Route path="professional" element={<DashboardProfessional />} />
+            <Route path="admin" element={<DashboardAdmin />} />
+            <Route path="estimator" element={<AIEstimator />} />
+            <Route path="ar" element={<ARVisualizer />} />
+            <Route path="studio" element={<AIInteriorStudio />} />
+            <Route path="marketplace" element={
+              <Marketplace
+                tab={marketplaceTab}
+                setTab={setMarketplaceTab}
+                search={marketplaceSearch}
+                setSearch={setMarketplaceSearch}
+                filterRole={marketplaceRole}
+                setFilterRole={setMarketplaceRole}
+              />
+            } />
+            <Route path="homecare" element={<HomeCare />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
       <div className="relative z-10">
         <Footer />

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Sparkles, Sliders, Camera, Download, Save, Info,
-  Check, ZoomIn, ZoomOut, UserPlus, FileText, Compass,
-  Pipette, RotateCcw, Box, Move, Bed, Sofa, UtensilsCrossed
+  Sparkles, Sliders, Download, Save, Info,
+  Check, ZoomIn, ZoomOut, UserPlus, FileText,
+  Pipette, RotateCcw, Move, Bed, Sofa, UtensilsCrossed
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 type RoomType = 'living' | 'kitchen' | 'bedroom';
 
@@ -31,7 +31,7 @@ const AIModularStudio: React.FC = () => {
   // Config state
   const [activeRoom, setActiveRoom] = useState<RoomType>('living');
   const [selectedMaterial, setSelectedMaterial] = useState<string>('Plywood');
-  const [prevMaterial, setPrevMaterial] = useState<string>('Plywood');
+
   const [finishOption, setFinishOption] = useState<string>('Matte');
   const [paintColor, setPaintColor] = useState<string>('#F5F5F0'); // Ivory
   const [prevPaintColor, setPrevPaintColor] = useState<string>('#F5F5F0');
@@ -90,7 +90,6 @@ const AIModularStudio: React.FC = () => {
 
   // Helper to trigger material morph animation
   const handleMaterialSelect = (mat: string) => {
-    setPrevMaterial(selectedMaterial);
     setSelectedMaterial(mat);
     setMorphProgress(0);
     setObjectMaterials(prev => ({
@@ -206,7 +205,7 @@ const AIModularStudio: React.FC = () => {
 
   // Drag handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    e.target.setPointerCapture(e.pointerId);
+    (e.target as Element).setPointerCapture(e.pointerId);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -372,7 +371,7 @@ const AIModularStudio: React.FC = () => {
     setIsDragging(false);
     setIsDraggingSlider(false);
     setIsDraggingBed(false);
-    e.target.releasePointerCapture(e.pointerId);
+    (e.target as Element).releasePointerCapture(e.pointerId);
   };
 
   // Color blending helper for texture transition

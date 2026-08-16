@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { User, CheckCircle2, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const DashboardClient: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'projects' | 'saved' | 'messages'>('projects');
 
   // Client projects mock data
@@ -57,7 +59,7 @@ const DashboardClient: React.FC = () => {
             <User className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white light-theme:text-brandDark-black font-display">Welcome Back, Client Portal</h1>
+            <h1 className="text-xl font-extrabold text-white light-theme:text-brandDark-black font-display">Welcome Back, {user?.displayName || user?.email || 'Client'}</h1>
             <p className="text-xs text-gray-500 font-semibold">Account Level: Standard Member • Escrow Active</p>
           </div>
         </div>

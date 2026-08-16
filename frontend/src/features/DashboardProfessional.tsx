@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Briefcase, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useAuth } from '../context/AuthContext';
 
 const DashboardProfessional: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'leads' | 'quotes' | 'earnings'>('leads');
 
   // Quotation Builder form states
@@ -49,7 +51,7 @@ const DashboardProfessional: React.FC = () => {
             <Briefcase className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white light-theme:text-brandDark-black font-display">Professional Portal</h1>
+            <h1 className="text-xl font-extrabold text-white light-theme:text-brandDark-black font-display">Welcome Back, {user?.displayName || user?.email || 'Professional'} (Pro Portal)</h1>
             <p className="text-xs text-gray-500 font-semibold">Verified Architecture Contractor Partner • Rating: 4.9 (142 reviews)</p>
           </div>
         </div>

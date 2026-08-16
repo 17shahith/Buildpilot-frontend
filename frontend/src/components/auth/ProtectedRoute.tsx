@@ -7,17 +7,22 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (isLoading) {
-    // You can replace this with a proper loading spinner component
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-10 h-10 border-4 border-[#F97316] border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-semibold text-gray-500">Checking authorization...</span>
+        </div>
+      </div>
+    );
   }
 
-  if (!isAuthenticated) {
-    // Redirect to login, but save the location they were trying to go to
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;
