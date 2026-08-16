@@ -1,39 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, UserCheck, AlertTriangle, Coins } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 
+
+interface ProApplication {
+  id: string;
+  userId: string;
+  name: string;
+  role: string;
+  license: string;
+  date: string;
+  status: string;
+}
+
+interface FlaggedPost {
+  id: string;
+  type: string;
+  title: string;
+  reason: string;
+  date: string;
+}
+
 const DashboardAdmin: React.FC = () => {
   const { user } = useAuth();
   // Verification queue data
-  const [prosQueue, setProsQueue] = useState([
-    { id: '1', name: 'John Doe', role: 'Plumber', license: 'LP-982736', date: 'Jul 24', status: 'Pending' },
-    { id: '2', name: 'James Carter', role: 'Electrician', license: 'LE-873645', date: 'Jul 25', status: 'Pending' }
-  ]);
-
+  const [prosQueue, setProsQueue] = useState<ProApplication[]>([]);
   // Mod flagged posts queue
-  const [flaggedPosts, setFlaggedPosts] = useState([
-    { id: 'f1', type: 'Property Listing', title: 'Unverified Cabin Plot', reason: 'Suspected fake deeds documentation', date: 'Jul 25' }
-  ]);
+  const [flaggedPosts, setFlaggedPosts] = useState<FlaggedPost[]>([]);
 
-  const handleApprovePro = (id: string, name: string) => {
-    setProsQueue(prev => prev.filter(p => p.id !== id));
-    confetti({
-      particleCount: 40,
-      spread: 30,
-      origin: { y: 0.6 }
-    });
-    alert(`Professional registration for ${name} has been approved and issued a Verified Badge!`);
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      try {
+        const appsRes = await fetch('/api/admin/applications', { headers });
+        if (appsRes.ok) {
+          const appsData = await appsRes.json();
+          setProsQueue(appsData.data || []);
+        }
+
+        const flagsRes = await fetch('/api/admin/flags', { headers });
+        if (flagsRes.ok) {
+          const flagsData = await flagsRes.json();
+          setFlaggedPosts(flagsData.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching admin data:', err);
+      }
+    };
+    fetchAdminData();
+  }, []);
+
+  const handleApprovePro = async (id: string, name: string, targetUserId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/admin/applications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'Approved' })
+      });
+      setProsQueue(prev => prev.filter(p => p.id !== id));
+      confetti({
+        particleCount: 40,
+        spread: 30,
+        origin: { y: 0.6 }
+      });
+      alert(`Professional registration for ${name} has been approved and issued a Verified Badge!`);
+    } catch (err) {
+      console.error('Approval error:', err);
+      alert('Failed to approve professional.');
+    }
   };
 
-  const handleDeclinePro = (id: string, name: string) => {
-    setProsQueue(prev => prev.filter(p => p.id !== id));
-    alert(`Registration for ${name} declined and ticket resolved.`);
+  const handleDeclinePro = async (id: string, name: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/admin/applications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'Declined' })
+      });
+      setProsQueue(prev => prev.filter(p => p.id !== id));
+      alert(`Registration for ${name} declined and ticket resolved.`);
+    } catch (err) {
+      console.error('Decline error:', err);
+    }
   };
 
-  const handleIgnoreFlag = (id: string) => {
-    setFlaggedPosts(prev => prev.filter(p => p.id !== id));
-    alert('Post flag cleared. Content restored as active.');
+  const handleIgnoreFlag = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/admin/flags/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setFlaggedPosts(prev => prev.filter(p => p.id !== id));
+      alert('Post flag cleared. Content restored as active.');
+    } catch (err) {
+      console.error('Clear flag error:', err);
+    }
+  };
+
+  const handleDelistPost = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/admin/flags/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setFlaggedPosts(prev => prev.filter(f => f.id !== id));
+      alert('Listing has been suspended and taken down.');
+    } catch (err) {
+      console.error('Delist error:', err);
+    }
   };
 
   return (
@@ -84,7 +164,7 @@ const DashboardAdmin: React.FC = () => {
                       Reject
                     </button>
                     <button
-                      onClick={() => handleApprovePro(pro.id, pro.name)}
+                      onClick={() => handleApprovePro(pro.id, pro.name, pro.userId)}
                       className="px-3 py-1.5 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition-all shadow-glow"
                     >
                       Approve
@@ -123,10 +203,7 @@ const DashboardAdmin: React.FC = () => {
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        setFlaggedPosts(prev => prev.filter(f => f.id !== flag.id));
-                        alert('Listing has been suspended and taken down.');
-                      }}
+                      onClick={() => handleDelistPost(flag.id)}
                       className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition-all"
                     >
                       De-list Post

@@ -1,7 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Briefcase, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
+
+
+interface Lead {
+  id: string;
+  client: string;
+  details: string;
+  budget: number;
+  date: string;
+  urgency: string;
+}
+
+interface Appointment {
+  id: string;
+  title: string;
+  date: string;
+  client: string;
+}
 
 const DashboardProfessional: React.FC = () => {
   const { user } = useAuth();
@@ -13,33 +30,76 @@ const DashboardProfessional: React.FC = () => {
   const [laborCost, setLaborCost] = useState('');
   const [remarks, setRemarks] = useState('');
 
-  // Leads list
-  const leads = [
-    { id: 'l1', client: 'Alice Jenkins', details: 'Wants architectural design for 2400 sqft residential structure.', budget: 65000, date: 'Received Today', urgency: 'High' },
-    { id: 'l2', client: 'Marcus Aurelius', details: 'Deck extension review and structural load validation.', budget: 14000, date: '2 days ago', urgency: 'Medium' }
-  ];
+  // Real data states
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  // Calendar meetings
-  const appointments = [
-    { title: 'Kitchen Site Measurement Scan', date: 'July 28, 10:00 AM', client: 'Alice Jenkins' },
-    { title: 'Foundation Plan Signoff', date: 'July 30, 2:30 PM', client: 'Marcus Aurelius' }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      try {
+        const leadsRes = await fetch('/api/leads', { headers });
+        if (leadsRes.ok) {
+          const leadsData = await leadsRes.json();
+          setLeads(leadsData.data || []);
+        }
 
-  const handleIssueQuote = (e: React.FormEvent) => {
+        const apptsRes = await fetch('/api/bookings', { headers });
+        if (apptsRes.ok) {
+          const apptsData = await apptsRes.json();
+          // Map backend bookings to appointment format
+          const mappedAppts = (apptsData.data || []).map((b: any) => ({
+            id: b.id,
+            title: b.notes || 'Consultation',
+            date: new Date(b.date).toLocaleString(),
+            client: b.clientId
+          }));
+          setAppointments(mappedAppts);
+        }
+      } catch (error) {
+        console.error('Error fetching professional data:', error);
+      }
+    };
+    fetchData();
+  }, [user]);
+
+  const handleIssueQuote = async (e: React.FormEvent) => {
     e.preventDefault();
     const material = Number(materialCost);
     const labor = Number(laborCost);
-    if (!clientName.trim() || !Number.isFinite(material) || !Number.isFinite(labor) || material < 0 || labor < 0) return;
-    confetti({
-      particleCount: 50,
-      spread: 40,
-      origin: { y: 0.6 }
-    });
-    alert(`Quotation successfully created and dispatched to ${clientName}!`);
-    setClientName('');
-    setMaterialCost('');
-    setLaborCost('');
-    setRemarks('');
+    if (!clientName.trim() || !Number.isFinite(material) || !Number.isFinite(labor) || material < 0 || labor < 0 || !user) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          clientName: clientName.trim(),
+          materialCost: material,
+          laborCost: labor,
+          remarks: remarks.trim()
+        })
+      });
+      
+      if (!res.ok) throw new Error('Failed to create quote');
+
+      confetti({
+        particleCount: 50,
+        spread: 40,
+        origin: { y: 0.6 }
+      });
+      alert(`Quotation successfully created and dispatched to ${clientName}!`);
+      setClientName('');
+      setMaterialCost('');
+      setLaborCost('');
+      setRemarks('');
+    } catch (error) {
+      console.error('Error creating quote:', error);
+      alert('Failed to issue quotation.');
+    }
   };
 
   return (

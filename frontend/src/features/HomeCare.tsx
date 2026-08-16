@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wrench,
   Zap,
@@ -20,12 +20,15 @@ import {
   Info
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../utils/api';
 
 interface HomeCareProps {
   setCurrentView?: (view: string) => void;
 }
 
 const HomeCare: React.FC<HomeCareProps> = () => {
+  const { user } = useAuth();
   const [activeClientTab, setActiveClientTab] = useState<'dashboard' | 'history'>('dashboard');
 
   // Multi-step report form states
@@ -51,47 +54,109 @@ const HomeCare: React.FC<HomeCareProps> = () => {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any | null>(null);
 
-  // Active requests DB simulation
-  const [requests, setRequests] = useState<any[]>([
-    {
-      id: 'req_101',
-      serviceType: 'AC Technician',
-      title: 'AC is not cooling properly',
-      description: 'The master bedroom AC is only blowing normal air, no cool air is coming out.',
-      buildingName: 'Tower A, Skyline Heights',
-      unit: '1204',
-      floor: '12',
-      room: 'Bedroom',
-      priority: 'High',
-      preferredDate: '2026-08-01',
-      preferredTime: '02:00 PM - 04:00 PM',
-      status: 'Assigned',
-      pro: {
-        name: 'Amit Sharma',
-        image: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120&h=120',
-        rating: 4.85,
-        reviews: 94,
-        distance: '2.4 km',
-        charge: '₹350 Visit Charge'
-      },
-      history: [
-        { status: 'Request Submitted', time: '10:30 AM' },
-        { status: 'Professional Assigned', time: '10:45 AM' }
-      ],
-      chat: [
-        { sender: 'pro', text: 'Hello, I have been assigned to your AC repair request. I will arrive at the scheduled time.', time: '10:48 AM' }
-      ]
-    }
-  ]);
+  // Active requests state (initially empty for new users)
+  const [requests, setRequests] = useState<any[]>([]);
 
   // Selected request for active tracking view
-  const [selectedTrackingRequest, setSelectedTrackingRequest] = useState<any | null>(requests[0]);
+  const [selectedTrackingRequest, setSelectedTrackingRequest] = useState<any | null>(null);
   const [chatMessage, setChatMessage] = useState('');
 
   // Selected Category filter
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyStatusFilter, setHistoryStatusFilter] = useState('');
+
+  // Fetch requests for current authenticated user
+  useEffect(() => {
+    if (!user) {
+      setRequests([]);
+      setSelectedTrackingRequest(null);
+      return;
+    }
+
+    const loadRequests = async () => {
+      try {
+        const data = await api.get(`api/service-requests?userId=${user.uid}`);
+        if (data && Array.isArray(data)) {
+          setRequests(data);
+          if (data.length > 0) {
+            setSelectedTrackingRequest(data[0]);
+          } else {
+            setSelectedTrackingRequest(null);
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn('API error fetching requests, falling back to local storage', err);
+      }
+
+      // Local storage fallback partitioned by user.uid
+      const stored = localStorage.getItem(`buildpilot_requests_${user.uid}`);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setRequests(parsed);
+          if (parsed.length > 0) {
+            setSelectedTrackingRequest(parsed[0]);
+          } else {
+            setSelectedTrackingRequest(null);
+          }
+        } catch {
+          setRequests([]);
+          setSelectedTrackingRequest(null);
+        }
+      } else {
+        setRequests([]);
+        setSelectedTrackingRequest(null);
+      }
+    };
+
+    loadRequests();
+  }, [user]);
+
+  // Generate dynamic event-driven notifications matching requests
+  const userNotifications = requests.flatMap(req => {
+    const list = [];
+    
+    // 1. Request Submitted
+    list.push({
+      id: `notif_sub_${req.id}`,
+      requestId: req.id,
+      userId: user?.uid,
+      title: 'Request Submitted',
+      message: 'Your service request has been successfully submitted.',
+      status: 'Submitted',
+      createdAt: req.createdAt || new Date().toISOString()
+    });
+    
+    // 2. Expert Assigned
+    if (req.status === 'Assigned' || req.status === 'Completed') {
+      list.push({
+        id: `notif_asg_${req.id}`,
+        requestId: req.id,
+        userId: user?.uid,
+        title: 'Expert Assigned',
+        message: 'An expert has been assigned to your service request.',
+        status: 'Assigned',
+        createdAt: req.updatedAt || new Date().toISOString()
+      });
+    }
+    
+    // 3. Service Completed
+    if (req.status === 'Completed') {
+      list.push({
+        id: `notif_cmp_${req.id}`,
+        requestId: req.id,
+        userId: user?.uid,
+        title: 'Service Completed',
+        message: 'Your requested service has been completed.',
+        status: 'Completed',
+        createdAt: req.updatedAt || new Date().toISOString()
+      });
+    }
+    
+    return list;
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Selected professional discovery state
   const [showDiscovery, setShowDiscovery] = useState(false);
@@ -242,7 +307,8 @@ const HomeCare: React.FC<HomeCareProps> = () => {
       origin: { y: 0.6 }
     });
     const newReq = {
-       id: `req_${crypto.randomUUID()}`,
+      id: `req_${crypto.randomUUID()}`,
+      userId: user?.uid,
       serviceType: formData.serviceType,
       title: formData.title || 'Untitled request',
       description: formData.description,
@@ -254,14 +320,33 @@ const HomeCare: React.FC<HomeCareProps> = () => {
       preferredDate: formData.preferredDate || new Date().toISOString().split('T')[0],
       preferredTime: formData.preferredTime,
       status: 'Submitted',
+      pro: null,
       history: [{ status: 'Request Submitted', time: 'Just now' }],
-      chat: []
+      chat: [],
+      cost: 350,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
-    setRequests(prev => [newReq, ...prev]);
+    const updatedRequests = [newReq, ...requests];
+    setRequests(updatedRequests);
     setSelectedTrackingRequest(newReq);
+    
+    // Save to backend and local storage
+    const saveRequest = async () => {
+      try {
+        await api.post('api/service-requests', newReq);
+      } catch (err) {
+        console.warn('Backend API offline, saved request locally');
+      }
+      if (user) {
+        localStorage.setItem(`buildpilot_requests_${user.uid}`, JSON.stringify(updatedRequests));
+      }
+    };
+    saveRequest();
+
     setShowReportForm(false);
-     setFormStep(1);
-     setFormError(null);
+    setFormStep(1);
+    setFormError(null);
     setAiAnalysis(null);
     setShowDiscovery(true);
   };
@@ -273,28 +358,45 @@ const HomeCare: React.FC<HomeCareProps> = () => {
       spread: 40,
       origin: { y: 0.7 }
     });
-    setRequests(prev =>
-      prev.map(r => {
-        if (r.id === selectedTrackingRequest?.id) {
-          const updated = {
-            ...r,
-            status: 'Assigned',
-            pro: {
-              name: pro.name,
-              image: pro.image,
-              rating: pro.rating,
-              reviews: pro.jobs,
-              distance: pro.distance,
-              charge: `₹${pro.charge} Visit Charge`
-            },
-            history: [...r.history, { status: 'Professional Assigned', time: 'Just now' }]
-          };
-          setSelectedTrackingRequest(updated);
-          return updated;
+    const updatedRequests = requests.map(r => {
+      if (r.id === selectedTrackingRequest?.id) {
+        const updated = {
+          ...r,
+          status: 'Assigned',
+          pro: {
+            name: pro.name,
+            image: pro.image,
+            rating: pro.rating,
+            reviews: pro.jobs,
+            distance: pro.distance,
+            charge: `₹${pro.charge} Visit Charge`
+          },
+          history: [...r.history, { status: 'Professional Assigned', time: 'Just now' }],
+          cost: pro.charge,
+          updatedAt: new Date().toISOString()
+        };
+        setSelectedTrackingRequest(updated);
+        return updated;
+      }
+      return r;
+    });
+
+    setRequests(updatedRequests);
+
+    const saveRequests = async () => {
+      try {
+        const selectedReq = updatedRequests.find(r => r.id === selectedTrackingRequest?.id);
+        if (selectedReq) {
+          await api.put(`api/service-requests/${selectedReq.id}`, selectedReq);
         }
-        return r;
-      })
-    );
+      } catch (err) {
+        console.warn('Backend API offline, saved assignment locally');
+      }
+      if (user) {
+        localStorage.setItem(`buildpilot_requests_${user.uid}`, JSON.stringify(updatedRequests));
+      }
+    };
+    saveRequests();
     setShowDiscovery(false);
   };
 
@@ -302,34 +404,41 @@ const HomeCare: React.FC<HomeCareProps> = () => {
   const handleSendChatMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatMessage.trim() || !selectedTrackingRequest) return;
-    setRequests(prev =>
-      prev.map(r => {
+    
+    let updatedRequests = requests.map(r => {
+      if (r.id === selectedTrackingRequest.id) {
+        const updated = {
+          ...r,
+          chat: [...(r.chat || []), { sender: 'client', text: chatMessage, time: 'Just now' }]
+        };
+        setSelectedTrackingRequest(updated);
+        return updated;
+      }
+      return r;
+    });
+
+    setRequests(updatedRequests);
+    setChatMessage('');
+    if (user) {
+      localStorage.setItem(`buildpilot_requests_${user.uid}`, JSON.stringify(updatedRequests));
+    }
+
+    setTimeout(() => {
+      updatedRequests = updatedRequests.map(r => {
         if (r.id === selectedTrackingRequest.id) {
           const updated = {
             ...r,
-            chat: [...(r.chat || []), { sender: 'client', text: chatMessage, time: 'Just now' }]
+            chat: [...(r.chat || []), { sender: 'pro', text: 'Received. I am preparing the tools and heading over shortly.', time: 'Just now' }]
           };
           setSelectedTrackingRequest(updated);
           return updated;
         }
         return r;
-      })
-    );
-    setChatMessage('');
-    setTimeout(() => {
-      setRequests(prev =>
-        prev.map(r => {
-          if (r.id === selectedTrackingRequest.id) {
-            const updated = {
-              ...r,
-              chat: [...(r.chat || []), { sender: 'pro', text: 'Received. I am preparing the tools and heading over shortly.', time: 'Just now' }]
-            };
-            setSelectedTrackingRequest(updated);
-            return updated;
-          }
-          return r;
-        })
-      );
+      });
+      setRequests(updatedRequests);
+      if (user) {
+        localStorage.setItem(`buildpilot_requests_${user.uid}`, JSON.stringify(updatedRequests));
+      }
     }, 1500);
   };
 
@@ -341,18 +450,42 @@ const HomeCare: React.FC<HomeCareProps> = () => {
       spread: 60,
       origin: { y: 0.6 }
     });
-    setRequests(prev =>
-      prev.map(r => {
-        if (r.id === showFeedbackModal.id) {
-          return {
-            ...r,
-            feedbackSubmitted: true,
-            userRating: feedbackRating
-          };
+    const updatedRequests = requests.map(r => {
+      if (r.id === showFeedbackModal.id) {
+        return {
+          ...r,
+          feedbackSubmitted: true,
+          userRating: feedbackRating,
+          status: 'Completed',
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return r;
+    });
+
+    setRequests(updatedRequests);
+    
+    const updatedTracking = updatedRequests.find(r => r.id === selectedTrackingRequest?.id);
+    if (updatedTracking) {
+      setSelectedTrackingRequest(updatedTracking);
+    }
+    
+    if (user) {
+      localStorage.setItem(`buildpilot_requests_${user.uid}`, JSON.stringify(updatedRequests));
+    }
+    
+    const saveFeedback = async () => {
+      try {
+        const completedReq = updatedRequests.find(r => r.id === showFeedbackModal.id);
+        if (completedReq) {
+          await api.put(`api/service-requests/${completedReq.id}`, completedReq);
         }
-        return r;
-      })
-    );
+      } catch (err) {
+        console.warn('Backend API offline, saved feedback locally');
+      }
+    };
+    saveFeedback();
+
     setShowFeedbackModal(null);
     alert('Thank you! Your feedback has been saved successfully.');
   };
@@ -511,206 +644,265 @@ const HomeCare: React.FC<HomeCareProps> = () => {
 
               {/* Right Side: Tracking Details & Communication Panel */}
               <div className="lg:col-span-4 space-y-6">
-                {selectedTrackingRequest ? (
-                  <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-                    <div className="bg-[#0F172A] p-5 text-white">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-[#F97316] font-bold uppercase tracking-wider font-mono">Service Tracker</span>
-                        <span className="text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">{selectedTrackingRequest.id}</span>
-                      </div>
-                      <h4 className="text-sm font-bold mt-2 truncate">{selectedTrackingRequest.title}</h4>
-                      <p className="text-xs text-slate-400 mt-1">{selectedTrackingRequest.serviceType}</p>
-                    </div>
-
-                    {/* Visual Tracker Timeline (Themed Orange) */}
-                    <div className="p-6 space-y-6">
-                      <div className="space-y-4">
-                        <h5 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Progress Timeline</h5>
-                        
-                        <div className="space-y-4 pl-4 border-l-2 border-slate-100 relative">
-                          {[
-                            { label: 'Request Submitted', value: 'Submitted', desc: 'Request logged on BuildPilot' },
-                            { label: 'Professional Assigned', value: 'Assigned', desc: 'Matching expert confirmed' },
-                            { label: 'Technician En Route', value: 'En Route', desc: 'Estimated arrival in 15 mins' },
-                            { label: 'Work in Progress', value: 'Active', desc: 'Resolution currently active' },
-                            { label: 'Completed', value: 'Completed', desc: 'Quality audit signed off' }
-                          ].map((step, i) => {
-                            const isDone = selectedTrackingRequest.status === step.value || 
-                              (step.value === 'Submitted' && selectedTrackingRequest.status !== 'Submitted') ||
-                              (step.value === 'Assigned' && !['Submitted', 'Assigned'].includes(selectedTrackingRequest.status));
-                            return (
-                              <div key={i} className="relative">
-                                <div className={`absolute -left-[23px] top-1.5 w-3 h-3 rounded-full border-2 bg-white transition-all ${
-                                  isDone ? 'border-[#F97316] bg-[#F97316]' : 'border-slate-300'
-                                }`}></div>
-                                <div>
-                                  <p className={`text-xs font-bold ${isDone ? 'text-slate-900' : 'text-slate-400'}`}>
-                                    {step.label}
-                                  </p>
-                                  <p className="text-[10px] text-slate-400">{step.desc}</p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Assigned Tech Info */}
-                      {selectedTrackingRequest.pro && (
-                        <div className="border-t border-slate-100 pt-5 space-y-4">
-                          <h5 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Your Technician</h5>
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center space-x-3">
-                              <img src={selectedTrackingRequest.pro.image} alt={selectedTrackingRequest.pro.name} className="w-11 h-11 rounded-2xl object-cover" />
-                              <div>
-                                <p className="text-xs font-bold text-slate-800">{selectedTrackingRequest.pro.name}</p>
-                                <div className="flex items-center space-x-1">
-                                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                  <span className="text-[10px] font-bold text-slate-600">{selectedTrackingRequest.pro.rating}</span>
-                                  <span className="text-[9px] text-slate-400 font-semibold">({selectedTrackingRequest.pro.reviews} jobs)</span>
-                                </div>
-                              </div>
-                            </div>
-                            <a href="tel:+919876543210" className="p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:text-[#F97316] hover:border-[#F97316]/40 transition-colors">
-                              <Phone className="w-4 h-4" />
-                            </a>
-                          </div>
-
-                          {/* Secure In-App Chat */}
-                          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col h-48 justify-between">
-                            <div className="overflow-y-auto space-y-2 text-[11px] max-h-36 pr-1">
-                              <p className="text-[9px] text-slate-400 text-center font-semibold uppercase">Secure End-to-End Encrypted Chat</p>
-                              {(selectedTrackingRequest.chat || []).map((msg: any, mIdx: number) => (
-                                <div key={mIdx} className={`flex flex-col ${msg.sender === 'client' ? 'items-end' : 'items-start'}`}>
-                                  <span className={`px-2.5 py-1.5 rounded-xl max-w-[85%] ${
-                                    msg.sender === 'client' ? 'bg-[#F97316] text-white' : 'bg-white border text-slate-800'
-                                  }`}>
-                                    {msg.text}
-                                  </span>
-                                  <span className="text-[8px] text-slate-400 mt-0.5">{msg.time}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <form onSubmit={handleSendChatMessage} className="flex gap-1.5 mt-2">
-                              <input
-                                type="text"
-                                placeholder="Message technician..."
-                                 value={chatMessage}
-                                 onChange={(e) => setChatMessage(e.target.value)}
-                                 maxLength={1000}
-                                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[11px] focus:outline-none focus:border-[#F97316]"
-                              />
-                              <button type="submit" className="px-3 bg-[#F97316] text-white rounded-xl text-xs font-bold">Send</button>
-                            </form>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
+                {requests.length === 0 ? (
                   <div className="bg-white border border-slate-200 rounded-3xl p-6 text-center shadow-sm">
                     <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2 animate-pulse" />
-                    <p className="text-xs font-bold text-slate-700">Select a request to trace details</p>
+                    <p className="text-xs font-bold text-slate-700">No Updates</p>
+                    <p className="text-[10px] text-slate-400 mt-1">You don't have any active service requests or updates yet.</p>
                   </div>
+                ) : (
+                  <>
+                    {selectedTrackingRequest ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+                        <div className="bg-[#0F172A] p-5 text-white">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-[#F97316] font-bold uppercase tracking-wider font-mono">Service Tracker</span>
+                            <span className="text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">{selectedTrackingRequest.id}</span>
+                          </div>
+                          <h4 className="text-sm font-bold mt-2 truncate">{selectedTrackingRequest.title}</h4>
+                          <p className="text-xs text-slate-400 mt-1">{selectedTrackingRequest.serviceType}</p>
+                        </div>
+
+                        {/* Visual Tracker Timeline (Themed Orange) */}
+                        <div className="p-6 space-y-6">
+                          <div className="space-y-4">
+                            <h5 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Progress Timeline</h5>
+                            
+                            <div className="space-y-4 pl-4 border-l-2 border-slate-100 relative">
+                              {[
+                                { label: 'Request Submitted', value: 'Submitted', desc: 'Request logged on BuildPilot' },
+                                { label: 'Professional Assigned', value: 'Assigned', desc: 'Matching expert confirmed' },
+                                { label: 'Technician En Route', value: 'En Route', desc: 'Estimated arrival in 15 mins' },
+                                { label: 'Work in Progress', value: 'Active', desc: 'Resolution currently active' },
+                                { label: 'Completed', value: 'Completed', desc: 'Quality audit signed off' }
+                              ].map((step, i) => {
+                                const isDone = selectedTrackingRequest.status === step.value || 
+                                  (step.value === 'Submitted' && selectedTrackingRequest.status !== 'Submitted') ||
+                                  (step.value === 'Assigned' && !['Submitted', 'Assigned'].includes(selectedTrackingRequest.status));
+                                return (
+                                  <div key={i} className="relative">
+                                    <div className={`absolute -left-[23px] top-1.5 w-3 h-3 rounded-full border-2 bg-white transition-all ${
+                                      isDone ? 'border-[#F97316] bg-[#F97316]' : 'border-slate-300'
+                                    }`}></div>
+                                    <div>
+                                      <p className={`text-xs font-bold ${isDone ? 'text-slate-900' : 'text-slate-400'}`}>
+                                        {step.label}
+                                      </p>
+                                      <p className="text-[10px] text-slate-400">{step.desc}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Assigned Tech Info */}
+                          {selectedTrackingRequest.pro && (
+                            <div className="border-t border-slate-100 pt-5 space-y-4">
+                              <h5 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Your Technician</h5>
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center space-x-3">
+                                  <img src={selectedTrackingRequest.pro.image} alt={selectedTrackingRequest.pro.name} className="w-11 h-11 rounded-2xl object-cover" />
+                                  <div>
+                                    <p className="text-xs font-bold text-slate-800">{selectedTrackingRequest.pro.name}</p>
+                                    <div className="flex items-center space-x-1">
+                                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                      <span className="text-[10px] font-bold text-slate-600">{selectedTrackingRequest.pro.rating}</span>
+                                      <span className="text-[9px] text-slate-400 font-semibold">({selectedTrackingRequest.pro.reviews} jobs)</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <a href="tel:+919876543210" className="p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:text-[#F97316] hover:border-[#F97316]/40 transition-colors">
+                                  <Phone className="w-4 h-4" />
+                                </a>
+                              </div>
+
+                              {/* Secure In-App Chat */}
+                              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col h-48 justify-between">
+                                <div className="overflow-y-auto space-y-2 text-[11px] max-h-36 pr-1">
+                                  <p className="text-[9px] text-slate-400 text-center font-semibold uppercase">Secure End-to-End Encrypted Chat</p>
+                                  {(selectedTrackingRequest.chat || []).map((msg: any, mIdx: number) => (
+                                    <div key={mIdx} className={`flex flex-col ${msg.sender === 'client' ? 'items-end' : 'items-start'}`}>
+                                      <span className={`px-2.5 py-1.5 rounded-xl max-w-[85%] ${
+                                        msg.sender === 'client' ? 'bg-[#F97316] text-white' : 'bg-white border text-slate-800'
+                                      }`}>
+                                        {msg.text}
+                                      </span>
+                                      <span className="text-[8px] text-slate-400 mt-0.5">{msg.time}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                <form onSubmit={handleSendChatMessage} className="flex gap-1.5 mt-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Message technician..."
+                                     value={chatMessage}
+                                     onChange={(e) => setChatMessage(e.target.value)}
+                                     maxLength={1000}
+                                    className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[11px] focus:outline-none focus:border-[#F97316]"
+                                  />
+                                  <button type="submit" className="px-3 bg-[#F97316] text-white rounded-xl text-xs font-bold">Send</button>
+                                </form>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-6 text-center shadow-sm">
+                        <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2 animate-pulse" />
+                        <p className="text-xs font-bold text-slate-700">Select a request to trace details</p>
+                      </div>
+                    )}
+
+                    {/* Activity updates feed */}
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                      <h4 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Service Updates</h4>
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        {userNotifications.map(notif => (
+                          <div key={notif.id} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-[11px] text-slate-800">{notif.title}</span>
+                              <span className="text-[8px] text-slate-400 font-mono">
+                                {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 leading-relaxed">{notif.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 
             </div>
-          )}
-
-          {/* Service History tab */}
+          )}          {/* Service History tab */}
           {activeClientTab === 'history' && (
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h3 className="text-base font-bold font-display text-slate-900">Service Request Archives</h3>
                 
                 {/* Search and Filters */}
-                <div className="flex flex-wrap gap-2.5">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search service..."
-                      value={historySearch}
-                      onChange={(e) => setHistorySearch(e.target.value)}
-                      maxLength={100}
-                      className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#F97316]"
-                    />
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                {requests.length > 0 && (
+                  <div className="flex flex-wrap gap-2.5">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search service..."
+                        value={historySearch}
+                        onChange={(e) => setHistorySearch(e.target.value)}
+                        maxLength={100}
+                        className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#F97316]"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    </div>
+                    <select
+                      value={historyStatusFilter}
+                      onChange={(e) => setHistoryStatusFilter(e.target.value)}
+                      className="px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="Submitted">Submitted</option>
+                    </select>
                   </div>
-                  <select
-                    value={historyStatusFilter}
-                    onChange={(e) => setHistoryStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none"
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Assigned">Assigned</option>
-                    <option value="Submitted">Submitted</option>
-                  </select>
-                </div>
+                )}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 uppercase font-semibold">
-                      <th className="py-3 px-4">Request Details</th>
-                      <th className="py-3 px-4">Expert</th>
-                      <th className="py-3 px-4">Requested Date</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Bill Summary</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 font-medium">
-                    {[
-                      { id: 'req_098', serviceType: 'Plumber', title: 'Water leakage in kitchen sink', proName: 'Ramesh Kumar', date: '2026-07-28', status: 'Completed', cost: 420, invoice: true, feedbackSubmitted: true },
-                      { id: 'req_097', serviceType: 'Electrician', title: 'Living room light flickering', proName: 'Rajesh Patel', date: '2026-07-15', status: 'Completed', cost: 300, invoice: true, feedbackSubmitted: false }
-                    ]
-                      .filter(h => (historySearch ? h.title.toLowerCase().includes(historySearch.toLowerCase()) || h.serviceType.toLowerCase().includes(historySearch.toLowerCase()) : true))
-                      .filter(h => (historyStatusFilter ? h.status === historyStatusFilter : true))
-                      .map((historyItem) => (
-                        <tr key={historyItem.id} className="hover:bg-slate-50/50">
-                          <td className="py-3.5 px-4">
-                            <div>
-                              <p className="font-bold text-slate-800">{historyItem.title}</p>
-                              <p className="text-[10px] text-slate-400 font-mono">{historyItem.serviceType} • {historyItem.id}</p>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 text-slate-600">{historyItem.proName}</td>
-                          <td className="py-3.5 px-4 text-slate-500">{historyItem.date}</td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-bold">
-                              {historyItem.status}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-slate-900 font-black">₹{historyItem.cost}</td>
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setShowInvoiceModal(historyItem)}
-                                className="p-2 border rounded-xl hover:bg-slate-100 transition-colors"
-                                title="Download Invoice"
-                              >
-                                <Download className="w-3.5 h-3.5 text-slate-500" />
-                              </button>
-                              {!historyItem.feedbackSubmitted && (
+              {requests.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-sm max-w-md mx-auto space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400 animate-pulse">
+                    <Wrench className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-extrabold text-slate-800">No Service Requests Yet</h4>
+                    <p className="text-xs text-slate-500 font-medium">You haven't raised any service requests yet. Create your first request to see it here.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveClientTab('dashboard');
+                      setShowReportForm(true);
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Service Request
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-400 uppercase font-semibold">
+                        <th className="py-3 px-4">Request Details</th>
+                        <th className="py-3 px-4">Expert</th>
+                        <th className="py-3 px-4">Requested Date</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Bill Summary</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 font-medium">
+                      {requests
+                        .filter(h => (historySearch ? h.title.toLowerCase().includes(historySearch.toLowerCase()) || h.serviceType.toLowerCase().includes(historySearch.toLowerCase()) : true))
+                        .filter(h => (historyStatusFilter ? h.status === historyStatusFilter : true))
+                        .map((historyItem) => (
+                          <tr key={historyItem.id} className="hover:bg-slate-50/50">
+                            <td className="py-3.5 px-4">
+                              <div>
+                                <p className="font-bold text-slate-800">{historyItem.title}</p>
+                                <p className="text-[10px] text-slate-400 font-mono">{historyItem.serviceType} • {historyItem.id}</p>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-600">{historyItem.pro?.name || 'Unassigned'}</td>
+                            <td className="py-3.5 px-4 text-slate-500">{historyItem.preferredDate || historyItem.date}</td>
+                            <td className="py-3.5 px-4">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                historyItem.status === 'Completed'
+                                  ? 'bg-green-50 text-green-700'
+                                  : historyItem.status === 'Assigned'
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : 'bg-orange-50 text-[#EA580C]'
+                              }`}>
+                                {historyItem.status}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-900 font-black">₹{historyItem.cost || (historyItem.pro ? 420 : 350)}</td>
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex justify-end gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setShowFeedbackModal(historyItem)}
-                                  className="px-2.5 py-1.5 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-[10px] font-bold"
+                                  onClick={() => setShowInvoiceModal({
+                                    ...historyItem,
+                                    proName: historyItem.pro?.name || 'Unassigned',
+                                    date: historyItem.preferredDate || historyItem.date,
+                                    cost: historyItem.cost || 420
+                                  })}
+                                  className="p-2 border rounded-xl hover:bg-slate-100 transition-colors"
+                                  title="Download Invoice"
                                 >
-                                  Submit Feedback
+                                  <Download className="w-3.5 h-3.5 text-slate-500" />
                                 </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
+                                {!historyItem.feedbackSubmitted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowFeedbackModal(historyItem)}
+                                    className="px-2.5 py-1.5 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-[10px] font-bold"
+                                  >
+                                    Submit Feedback
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

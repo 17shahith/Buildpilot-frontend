@@ -19,7 +19,6 @@ import { Info, LogOut } from 'lucide-react';
 
 function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard-client');
-  const [role, setRole] = useState<'client' | 'pro' | 'admin'>('client');
   const [marketplaceTab, setMarketplaceTab] = useState<'pros' | 'properties'>('pros');
   const [marketplaceSearch, setMarketplaceSearch] = useState<string>('');
   const [marketplaceRole, setMarketplaceRole] = useState<string>('');
@@ -33,13 +32,6 @@ function App() {
     document.body.classList.add('light-theme');
   }, []);
 
-  // Sync role with currentView inside /main
-  useEffect(() => {
-    if (currentView === 'dashboard-client') setRole('client');
-    else if (currentView === 'dashboard-pro') setRole('pro');
-    else if (currentView === 'dashboard-admin') setRole('admin');
-  }, [currentView]);
-
   // Sync route and currentView view-switcher
   useEffect(() => {
     const path = location.pathname;
@@ -49,13 +41,10 @@ function App() {
       setCurrentView('auth');
     } else if (path === '/main/client') {
       setCurrentView('dashboard-client');
-      setRole('client');
     } else if (path === '/main/professional') {
       setCurrentView('dashboard-pro');
-      setRole('pro');
     } else if (path === '/main/admin') {
       setCurrentView('dashboard-admin');
-      setRole('admin');
     } else if (path.startsWith('/main/')) {
       const view = path.replace('/main/', '');
       setCurrentView(view);
@@ -65,7 +54,6 @@ function App() {
   // Handle logout
   const handleLogout = async () => {
     await logout();
-    setRole('client');
     navigate('/');
   };
 
@@ -86,8 +74,6 @@ function App() {
             else if (view === 'dashboard-client') navigate('/main/client');
             else navigate(`/main/${view}`);
           }}
-          role={role}
-          setRole={setRole}
           setMarketplaceTab={setMarketplaceTab}
         />
       </div>
@@ -128,52 +114,28 @@ function App() {
                   </button>
                 </div>
 
-                {/* Dashboard Role Switcher Tabs */}
-                {['dashboard-client', 'dashboard-pro', 'dashboard-admin'].includes(currentView) && (
-                  <div className="max-w-7xl mx-auto px-6 mt-2">
-                    <div className="inline-flex bg-slate-100 p-1 rounded-2xl border border-slate-200/60 shadow-sm">
-                      <button
-                        onClick={() => navigate('/main/client')}
-                        className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                          location.pathname === '/main/client'
-                            ? 'bg-white text-[#F97316] shadow-sm'
-                            : 'text-gray-500 hover:text-slate-900'
-                        }`}
-                      >
-                        Client Portal
-                      </button>
-                      <button
-                        onClick={() => navigate('/main/professional')}
-                        className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                          location.pathname === '/main/professional'
-                            ? 'bg-white text-[#F97316] shadow-sm'
-                            : 'text-gray-500 hover:text-slate-900'
-                        }`}
-                      >
-                        Professional Portal
-                      </button>
-                      <button
-                        onClick={() => navigate('/main/admin')}
-                        className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                          location.pathname === '/main/admin'
-                            ? 'bg-white text-[#F97316] shadow-sm'
-                            : 'text-gray-500 hover:text-slate-900'
-                        }`}
-                      >
-                        Admin Portal
-                      </button>
-                    </div>
-                  </div>
-                )}
+
 
                 <Outlet />
               </div>
             </ProtectedRoute>
           }>
             <Route index element={<Navigate to="client" replace />} />
-            <Route path="client" element={<DashboardClient />} />
-            <Route path="professional" element={<DashboardProfessional />} />
-            <Route path="admin" element={<DashboardAdmin />} />
+            <Route path="client" element={
+              <ProtectedRoute allowedRoles={['client', 'admin']}>
+                <DashboardClient />
+              </ProtectedRoute>
+            } />
+            <Route path="professional" element={
+              <ProtectedRoute allowedRoles={['pro', 'admin']}>
+                <DashboardProfessional />
+              </ProtectedRoute>
+            } />
+            <Route path="admin" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardAdmin />
+              </ProtectedRoute>
+            } />
             <Route path="estimator" element={<AIEstimator />} />
             <Route path="ar" element={<ARVisualizer />} />
             <Route path="studio" element={<AIInteriorStudio />} />

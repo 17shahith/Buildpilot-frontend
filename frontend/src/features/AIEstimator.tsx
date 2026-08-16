@@ -60,6 +60,7 @@ const AIEstimator: React.FC = () => {
   const [scanResult, setScanResult] = useState<any | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   // Compute live estimate client-side, updating dynamically
   const runLiveEstimate = async () => {
@@ -201,6 +202,7 @@ const AIEstimator: React.FC = () => {
       }
 
       setUploadError(null);
+      setScanError(null);
       const reader = new FileReader();
       reader.onload = () => {
         setPreviewImage(reader.result as string);
@@ -210,25 +212,108 @@ const AIEstimator: React.FC = () => {
         // Run scanner timer
         setTimeout(async () => {
           try {
+            // First attempt: call backend API endpoint
             const formData = new FormData();
             formData.append('image', file, file.name);
             const data = await api.upload('api/defect-detection', formData, { retries: 1 });
-            setScanResult(data);
-          } catch {
-            // Local mock fallback
-            setScanResult({
-              defectDetected: true,
-              severity: 'Medium',
-              type: 'Structural Fissures',
-              location: 'Concrete wall / Pillar junction',
-              description: 'Hairline shearing crack due to minor structural settling or thermal contraction.',
-              remedy: 'Inject low-viscosity epoxy resin and monitor for dynamic widening. If width exceeds 3mm, consult an engineer.',
-              repairedCostEstimate: 280,
-              confidenceRate: 94.6
-            });
-          } finally {
-            setScanning(false);
-          }
+            
+            // Format standard properties from API response to align schemas
+            const formatted = {
+              ...data,
+              defectDetected: data.detected !== undefined ? data.detected : data.defectDetected,
+              type: data.defectType || data.type || 'Structural Issue',
+              severity: data.riskLevel || data.severity || 'Medium',
+              location: data.affectedArea || data.location || 'Structural elements',
+              remedy: data.recommendation || data.remedy || 'Monitor defect progression',
+              confidenceRate: data.confidenceRate || (data.confidence ? (data.confidence * 100).toFixed(0) : 85)
+            };
+            setScanResult(formatted);
+          } catch (backendErr) {
+            console.warn('Backend API call failed, falling back to direct Gemini visual analysis', backendErr);
+            
+            try {
+              const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+              if (!apiKey) {
+                throw new Error('Gemini API key is not configured.');
+              }
+
+              const base64Data = (reader.result as string).split(',')[1];
+              const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [
+                        {
+                          text: `You are an expert AI Structural Defect Scanner. Analyze the uploaded image of a wall, column, beam, ceiling, concrete surface, brickwork, or foundation.
+                          Perform visual crack detection (hairline, surface, vertical, horizontal, diagonal, or major cracks) or check for spalling, deterioration, dampness, or corrosion/rust.
+                          
+                          Safety Instruction:
+                          This is an AI-assisted visual screening tool, NOT a certified structural engineering inspection.
+                          Therefore, never state that the building is safe, definitely unsafe, or that no structural problem exists.
+                          Use safe language like: "Visible signs detected", "Potential structural concern", "Further inspection recommended", "Professional structural assessment recommended". Recommend inspection by a qualified structural engineer for moderate/high/critical concerns.
+                          
+                          You MUST return ONLY a raw JSON object matching the following format, with no markdown styling:
+                          {
+                            "detected": true,
+                            "defectDetected": true,
+                            "defectType": "Diagonal Wall Crack",
+                            "type": "Diagonal Wall Crack",
+                            "riskLevel": "Moderate",
+                            "severity": "Medium",
+                            "confidence": 0.87,
+                            "confidenceRate": 87,
+                            "affectedArea": "Wall / Column junction",
+                            "location": "Wall / Column junction",
+                            "description": "A diagonal shear crack line was detected on the masonry surface, propagating upwards from the joint.",
+                            "recommendation": "Arrange a professional inspection to assess the cause and progression.",
+                            "remedy": "Monitor the crack for widening. Inject epoxy resin or consult a qualified structural engineer.",
+                            "repairedCostEstimate": 350
+                          }`
+                        },
+                        {
+                          inlineData: {
+                            mimeType: file.type,
+                            data: base64Data
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                })
+              });
+
+                if (!response.ok) {
+                  throw new Error(`Gemini API returned status code: ${response.status}`);
+                }
+
+                const responseData = await response.json();
+                const textOutput = responseData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const cleanJson = textOutput.replace(/```json/gi, '').replace(/```/gi, '').trim();
+                const parsed = JSON.parse(cleanJson);
+                
+                // Format output
+                const formatted = {
+                  ...parsed,
+                  defectDetected: parsed.detected !== undefined ? parsed.detected : parsed.defectDetected,
+                  type: parsed.defectType || parsed.type || 'Structural Issue',
+                  severity: parsed.riskLevel || parsed.severity || 'Medium',
+                  location: parsed.affectedArea || parsed.location || 'Structural element',
+                  remedy: parsed.recommendation || parsed.remedy || 'Arrange assessment',
+                  confidenceRate: parsed.confidenceRate || (parsed.confidence ? (parsed.confidence * 100).toFixed(0) : 85)
+                };
+                setScanResult(formatted);
+              } catch (geminiErr) {
+                console.error('All scanner fallback routes failed:', geminiErr);
+                setScanError('Analysis Failed. Unable to analyze this image right now. Please try again with a clear image.');
+                setScanResult(null);
+              }
+            } finally {
+              setScanning(false);
+            }
         }, 3000);
       };
       reader.readAsDataURL(file);
@@ -238,7 +323,6 @@ const AIEstimator: React.FC = () => {
   // SVG Donut Calculations
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
-  let accumulatedPercentage = 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
@@ -459,37 +543,51 @@ const AIEstimator: React.FC = () => {
                   {/* SVG Donut Chart */}
                   <div className="flex flex-col items-center justify-center relative">
                     <svg viewBox="0 0 160 160" className="w-48 h-48 sm:w-56 sm:h-56 transform -rotate-90">
-                      {estimateData.breakdown.map((item, idx) => {
-                        const strokeDasharray = `${circumference}`;
-                        const strokeDashoffset = circumference - (item.percentage / 100) * circumference;
-                        const rotation = (accumulatedPercentage / 100) * 360;
-                        accumulatedPercentage += item.percentage;
-                        const isHovered = hoveredSegment === idx;
+                      {/* Background circular track ring */}
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r={radius}
+                        fill="transparent"
+                        stroke="rgb(30, 41, 59)"
+                        strokeWidth="14"
+                        className="light-theme:stroke-slate-100"
+                      />
+                      {(() => {
+                        let currentAccumulated = 0;
+                        return estimateData.breakdown.map((item, idx) => {
+                          const gap = 2.5;
+                          const segmentLength = Math.max(0, (item.percentage / 100) * circumference - gap);
+                          const strokeDasharray = `${segmentLength} ${circumference}`;
+                          const rotation = (currentAccumulated / 100) * 360;
+                          currentAccumulated += item.percentage;
+                          const isHovered = hoveredSegment === idx;
 
-                        return (
-                          <circle
-                            key={idx}
-                            cx="80"
-                            cy="80"
-                            r={radius}
-                            fill="transparent"
-                            stroke={segmentColors[idx]}
-                            strokeWidth={isHovered ? 18 : 14}
-                            strokeDasharray={strokeDasharray}
-                            strokeDashoffset={strokeDashoffset}
-                            transform={`rotate(${rotation} 80 80)`}
-                            className="transition-all duration-300 cursor-pointer origin-center"
-                            onMouseEnter={() => setHoveredSegment(idx)}
-                            onMouseLeave={() => setHoveredSegment(null)}
-                          />
-                        );
-                      })}
-                      {/* Inner circle to make it look like a donut */}
-                      <circle cx="80" cy="80" r="38" fill="rgb(15, 15, 17)" className="light-theme:fill-white" />
+                          return (
+                            <circle
+                              key={idx}
+                              cx="80"
+                              cy="80"
+                              r={radius}
+                              fill="transparent"
+                              stroke={segmentColors[idx]}
+                              strokeWidth={isHovered ? 18 : 14}
+                              strokeDasharray={strokeDasharray}
+                              strokeDashoffset={0}
+                              transform={`rotate(${rotation} 80 80)`}
+                              className="transition-all duration-300 cursor-pointer origin-center"
+                              onMouseEnter={() => setHoveredSegment(idx)}
+                              onMouseLeave={() => setHoveredSegment(null)}
+                            />
+                          );
+                        });
+                      })()}
+                      {/* Inner circle to make it look like a donut, expanded radius to 43 to align inner boundaries */}
+                      <circle cx="80" cy="80" r="43" fill="rgb(15, 15, 17)" className="light-theme:fill-white" />
                     </svg>
 
-                    {/* Donut Center text */}
-                    <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                    {/* Donut Center text perfectly centered */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
                       {hoveredSegment !== null ? (
                         <>
                           <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
@@ -655,7 +753,7 @@ const AIEstimator: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           {/* Uploader panel */}
-          <div className="border-2 border-dashed border-brandDark-border/60 rounded-3xl p-6 bg-brandDark-black/20 text-center space-y-4 flex flex-col items-center justify-center min-h-[320px] relative overflow-hidden light-theme:border-brandLight-border/60">
+          <div className={`border-2 border-dashed border-brandDark-border/60 rounded-3xl p-6 bg-brandDark-black/20 text-center space-y-4 flex flex-col items-center justify-center min-h-[320px] relative overflow-hidden light-theme:border-brandLight-border/60 ${scanning ? 'pointer-events-none opacity-85' : ''}`}>
             {previewImage ? (
               <div className="absolute inset-0 w-full h-full">
                 <img src={previewImage} alt="Preview Upload" className="w-full h-full object-cover" />
@@ -664,7 +762,7 @@ const AIEstimator: React.FC = () => {
                     {/* Laser line overlay */}
                     <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent laser-line z-10 shadow-glow"></div>
                     <RefreshCw className="w-8 h-8 text-primary animate-spin mb-2 z-20" />
-                    <p className="text-xs font-bold uppercase text-white animate-pulse tracking-widest z-20">Scanning structural lines...</p>
+                    <p className="text-xs font-bold uppercase text-white animate-pulse tracking-widest z-20">Analyzing Structural Image...</p>
                     <div className="w-48 h-1.5 bg-brandDark-border rounded-full mt-3 overflow-hidden z-20">
                       <div className="h-full bg-primary rounded-full w-2/3 animate-pulse"></div>
                     </div>
@@ -695,9 +793,13 @@ const AIEstimator: React.FC = () => {
                   type="file"
                   accept=".jpg,.jpeg,.png,.webp"
                   onChange={handlePhotoUpload}
+                  disabled={scanning}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
-                <button className="px-4 py-2 border border-brandDark-border hover:border-primary rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-colors light-theme:border-brandLight-border light-theme:text-gray-700">
+                <button 
+                  disabled={scanning}
+                  className="px-4 py-2 border border-brandDark-border hover:border-primary rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-colors light-theme:border-brandLight-border light-theme:text-gray-700 disabled:opacity-50"
+                >
                   Select Photo
                 </button>
                 {uploadError && <p role="alert" className="text-[10px] font-semibold text-red-500">{uploadError}</p>}
@@ -708,11 +810,11 @@ const AIEstimator: React.FC = () => {
           {/* Analysis Result panel */}
           <div className="h-full flex flex-col justify-center">
             {scanResult ? (
-              <div className="p-6 rounded-3xl border border-brandDark-border bg-brandDark-charcoal/60 space-y-4 light-theme:bg-white light-theme:border-brandLight-border animate-fade-in shadow-xl">
+              <div className="p-6 rounded-3xl border border-brandDark-border bg-brandDark-charcoal/60 space-y-4 light-theme:bg-white light-theme:border-brandLight-border animate-fade-in shadow-xl text-xs">
                 <div className="flex justify-between items-center border-b border-brandDark-border pb-3 light-theme:border-brandLight-border">
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center space-x-1.5">
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span>Analysis Complete</span>
+                    <span>Structural Analysis</span>
                   </span>
                   <span className="text-[10px] bg-primary/10 border border-primary/20 text-primary px-2.5 py-1 rounded-full font-bold">
                     Confidence: {scanResult.confidenceRate}%
@@ -721,43 +823,52 @@ const AIEstimator: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Defect Type</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Detected Issue</span>
                     <span className="text-sm font-extrabold text-white light-theme:text-brandDark-black">{scanResult.type}</span>
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Severity Risk</span>
-                    {/* Severity Gauge */}
-                    <div className="flex items-center space-x-1">
-                      <div className="grid grid-cols-3 gap-1 w-16">
-                        <div className={`h-1.5 rounded-full ${scanResult.severity === 'Low' || scanResult.severity === 'Medium' || scanResult.severity === 'High' ? 'bg-green-500 shadow-glow' : 'bg-gray-700'}`}></div>
-                        <div className={`h-1.5 rounded-full ${scanResult.severity === 'Medium' || scanResult.severity === 'High' ? 'bg-yellow-500 shadow-glow' : 'bg-gray-700'}`}></div>
-                        <div className={`h-1.5 rounded-full ${scanResult.severity === 'High' ? 'bg-red-500 shadow-glow' : 'bg-gray-700'}`}></div>
-                      </div>
-                      <span className="text-xs font-extrabold text-white light-theme:text-brandDark-black uppercase ml-1">
-                        {scanResult.severity}
-                      </span>
-                    </div>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Risk Level</span>
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      scanResult.severity === 'High' || scanResult.severity === 'Critical'
+                        ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+                        : scanResult.severity === 'Medium' || scanResult.severity === 'Moderate'
+                        ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                        : 'bg-green-500/10 text-green-500 border border-green-500/20'
+                    }`}>
+                      {scanResult.severity}
+                    </span>
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 gap-1">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Affected Area</span>
+                  <span className="text-xs font-bold text-white light-theme:text-brandDark-black">{scanResult.location}</span>
+                </div>
+
                 <div className="space-y-1">
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Technical Description</span>
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-bold">Visual Evidence</span>
                   <p className="text-xs text-gray-300 light-theme:text-gray-600 leading-relaxed font-medium">
                     {scanResult.description}
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-brandDark-black/40 border border-brandDark-border/60 text-xs space-y-2 light-theme:bg-brandLight-slate light-theme:border-brandLight-border">
+                <div className="p-4 rounded-xl bg-brandDark-black/40 border border-brandDark-border/60 space-y-2 light-theme:bg-brandLight-slate light-theme:border-brandLight-border">
                   <span className="font-bold text-white light-theme:text-brandDark-black flex items-center space-x-1">
                     <Hammer className="w-3.5 h-3.5 text-primary" />
-                    <span>Remedy Recommendation</span>
+                    <span>Recommended Action</span>
                   </span>
                   <p className="text-[11px] text-gray-400 light-theme:text-gray-500 leading-relaxed font-medium">
                     {scanResult.remedy}
                   </p>
-                  <p className="text-xs font-bold text-white light-theme:text-brandDark-black pt-1">
-                    Estimated repair budget: <span className="text-primary font-black">${scanResult.repairedCostEstimate}</span>
-                  </p>
+                  {scanResult.repairedCostEstimate && (
+                    <p className="text-xs font-bold text-white light-theme:text-brandDark-black pt-1">
+                      Estimated repair budget: <span className="text-primary font-black">${scanResult.repairedCostEstimate}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-[10px] text-red-400 font-semibold leading-relaxed">
+                  ⚠️ Safety Notice: This is an AI-assisted visual screening tool, NOT a certified structural engineering inspection. For critical concerns, a professional structural engineering assessment is highly recommended.
                 </div>
 
                 <button
@@ -769,11 +880,17 @@ const AIEstimator: React.FC = () => {
                   Match Repair Contractors
                 </button>
               </div>
+            ) : scanError ? (
+              <div className="p-6 rounded-3xl border border-dashed border-red-500/30 bg-red-500/5 text-center text-red-500 py-16 flex flex-col items-center justify-center light-theme:border-red-500/20">
+                <AlertCircle className="w-8 h-8 text-red-500 mb-2 animate-bounce" />
+                <p className="text-xs font-bold">Analysis Failed</p>
+                <p className="text-[10px] text-red-400 max-w-xs mt-1">Unable to analyze this image right now. Please try again with a clear image.</p>
+              </div>
             ) : (
               <div className="p-6 rounded-3xl border border-dashed border-brandDark-border/60 bg-brandDark-charcoal/20 text-center text-gray-500 py-16 flex flex-col items-center justify-center light-theme:border-brandLight-border/60">
                 <AlertCircle className="w-8 h-8 text-gray-600 mb-2" />
                 <p className="text-xs font-bold">No Image Uploaded</p>
-                <p className="text-[10px] text-gray-600 max-w-xs mt-1">Upload a photo showing wall hairline cracks or foundation settled fissures to generate an immediate diagnostic estimate.</p>
+                <p className="text-[10px] text-gray-600 max-w-xs mt-1">Upload a clear image of a wall, column, ceiling, concrete surface, or brickwork to begin structural analysis.</p>
               </div>
             )}
           </div>

@@ -6,8 +6,6 @@ import { useAuth } from '../context/AuthContext';
 interface NavbarProps {
   currentView: string;
   setCurrentView: (view: string) => void;
-  role: 'client' | 'pro' | 'admin';
-  setRole: (role: 'client' | 'pro' | 'admin') => void;
   setMarketplaceTab: (tab: 'pros' | 'properties') => void;
 }
 

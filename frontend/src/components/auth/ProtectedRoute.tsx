@@ -4,10 +4,11 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  allowedRoles?: Array<'client' | 'pro' | 'admin'>;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const { user, userRole, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -23,6 +24,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
+    if (userRole === 'admin') return <Navigate to="/main/admin" replace />;
+    if (userRole === 'pro') return <Navigate to="/main/professional" replace />;
+    return <Navigate to="/main/client" replace />;
   }
 
   return <>{children}</>;

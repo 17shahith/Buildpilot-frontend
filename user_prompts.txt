@@ -1,0 +1,1456 @@
+<USER_REQUEST>
+# BUILDCORE — MASTER FIX PROMPT
+
+You are working on the existing **BuildCore** application. Fix the following three issues shown in the provided screenshots.
+
+## IMPORTANT RULE
+
+Do NOT redesign the application.
+
+Do NOT change the existing:
+
+* Header
+* Navigation bar
+* Logo
+* Fonts
+* Typography
+* Overall color palette
+* Existing spacing
+* Existing card styles
+* Existing page structure
+* Existing authentication flow
+* Existing modules
+* Existing working functionality
+
+Only fix the specific issues described below and make the implementation production-ready.
+
+---
+
+# 1. BUDGET INTERACTIVE GRAPH — COLORED SEGMENTS MUST BE INSIDE THE ROUND
+
+### Current problem
+
+In the budget/interactive graph shown in the first screenshot, the colored graph segments are appearing outside the circular/round element.
+
+The blue, orange, and pink graph segments look detached from the main round.
+
+### Required behavior
+
+Redesign ONLY the graph positioning so that the colored graph segments are visually contained **inside the circular graph/ring area**.
+
+The graph must look like a proper circular/donut/radial chart.
+
+Requirements:
+
+* Keep the central white circular area.
+* Keep the existing:
+
+  * `TOTAL BUDGET`
+  * `₹3.99L`
+  * `Interactive Graph`
+    text.
+* Keep the existing blue, orange, and pink colors.
+* The colored segments must belong to the same circular graph.
+* They must not float outside the circle.
+* They must not appear as disconnected bars.
+* Maintain equal and clean spacing between segments.
+* Keep the center text perfectly centered.
+* Make the graph responsive.
+* The graph should remain visually balanced on desktop and smaller screens.
+
+### Desired structure
+
+Use a proper:
+
+**DONUT / RADIAL / CIRCULAR PROGRESS GRAPH**
+
+instead of positioning independent colored shapes outside the circle.
+
+The final result should visually communicate:
+
+`colored circular segments → surrounding central white circle → budget information in center`
+
+Do NOT change the budget value or text unless required by the existing data.
+
+---
+
+# 2. NEW CLIENT — DO NOT SHOW FAKE SERVICE HISTORY
+
+## Current problem
+
+In the second screenshot, a newly registered/logged-in client is immediately seeing service-history records such as:
+
+* Water leakage in kitchen sink
+* Living room light flickering
+* Experts
+* Previous dates
+* Previous bills
+* Completed status
+
+This is incorrect.
+
+A new client must start with a completely clean account.
+
+---
+
+# USER DATA MUST BE INDIVIDUAL
+
+Implement proper user-specific data handling.
+
+Service history must belong to the currently authenticated user.
+
+NEVER display hardcoded/demo service requests to every user.
+
+The application must use the authenticated user's unique identifier, such as:
+
+`userId`
+
+or Firebase Authentication UID.
+
+---
+
+# NEW USER EXPERIENCE
+
+When a new user logs into BuildCore for the first time:
+
+### Service History
+
+The service history should be empty.
+
+Do NOT display:
+
+* Fake requests
+* Demo requests
+* Previous customer requests
+* Fake experts
+* Fake dates
+* Fake bills
+* Fake completed services
+
+Instead display a professional empty state.
+
+Example:
+
+**No Service Requests Yet**
+
+You haven't raised any service requests yet.
+
+Create your first request to see it here.
+
+Add an appropriate:
+
+**Create Service Request**
+
+button if the existing application has a service-request flow.
+
+---
+
+# EXISTING USER EXPERIENCE
+
+If a user has previously created service requests:
+
+Show ONLY requests belonging to that authenticated user.
+
+For example:
+
+```text
+Current User UID
+        ↓
+Fetch service requests
+        ↓
+Filter by userId
+        ↓
+Display only that user's requests
+```
+
+Never show another user's service history.
+
+---
+
+# SERVICE HISTORY SHOULD UPDATE DYNAMICALLY
+
+When a user creates a new service request:
+
+1. Save the request.
+2. Associate it with the authenticated user's UID.
+3. Store the request in the application's backend/database.
+4. Refresh/update the Service History.
+5. Show the newly created request to that same user.
+
+When the user logs out and another user logs in:
+
+The previous user's service history must disappear.
+
+The newly logged-in user must see ONLY their own data.
+
+---
+
+# 3. MODULE-SPECIFIC MESSAGES
+
+## Current problem
+
+The application appears to show information/messages that should not exist for a new user.
+
+A user should NOT receive module messages simply because the UI contains the module.
+
+Messages should be generated from actual events.
+
+---
+
+# REQUIRED MESSAGE LOGIC
+
+If a user has NOT raised any request:
+
+Do NOT show:
+
+* Service request notifications
+* Expert assigned messages
+* Service completed messages
+* Bill notifications
+* Repair updates
+* Fake alerts
+
+The module should show an appropriate empty state.
+
+Example:
+
+**No Updates**
+
+You don't have any active service requests or updates yet.
+
+---
+
+# WHEN A USER RAISES A REQUEST
+
+Only after the user actually raises a service request should the relevant module begin showing messages.
+
+Example flow:
+
+```text
+User raises request
+        ↓
+Request saved with authenticated userId
+        ↓
+Request status created
+        ↓
+Relevant module receives event/update
+        ↓
+User sees notification/message
+```
+
+Example messages:
+
+**Request Submitted**
+
+Your service request has been successfully submitted.
+
+Then, when an expert is assigned:
+
+**Expert Assigned**
+
+An expert has been assigned to your service request.
+
+Then:
+
+**Service Completed**
+
+Your requested service has been completed.
+
+Messages must be associated with the correct request and correct user.
+
+---
+
+# IMPORTANT DATA RULE
+
+Every service-related record should be associated with the authenticated user.
+
+Use a structure similar to:
+
+```text
+serviceRequest
+ ├── id
+ ├── userId
+ ├── serviceType
+ ├── description
+ ├── status
+ ├── expertId
+ ├── createdAt
+ └── updatedAt
+```
+
+Notifications/messages should similarly contain the relevant:
+
+```text
+userId
+requestId
+message
+status
+createdAt
+```
+
+Do not use global hardcoded arrays for production user data.
+
+---
+
+# 4. AI STRUCTURAL DEFECT SCANNER — MUST ACTUALLY WORK
+
+## Current problem
+
+The third screenshot shows:
+
+**AI Structural Defect Scanner**
+
+but currently it behaves mainly like an image-upload UI.
+
+The module must actually perform the function implied by its name.
+
+It should analyze an uploaded image of a structural element and provide meaningful structural-defect analysis.
+
+---
+
+# CORE FUNCTIONALITY
+
+The scanner should allow the user to upload an image of:
+
+* Wall
+* Column
+* Beam
+* Ceiling
+* Concrete surface
+* Brickwork
+* Foundation-related visible surface
+
+Supported image formats should remain appropriate for the existing application, such as:
+
+* PNG
+* JPG
+* JPEG
+
+---
+
+# AFTER IMAGE UPLOAD
+
+Once an image is uploaded:
+
+1. Display the uploaded image.
+2. Validate the image.
+3. Send the image to the AI/computer-vision backend.
+4. Analyze the image.
+5. Return a structured result.
+6. Display the result in the UI.
+
+Do NOT simply display:
+
+**Image uploaded successfully**
+
+The system must actually process the image.
+
+---
+
+# AI ANALYSIS SHOULD IDENTIFY
+
+Where technically supported by the configured AI model/backend, analyze for visible structural defects such as:
+
+### Crack Detection
+
+* Hairline cracks
+* Surface cracks
+* Vertical cracks
+* Horizontal cracks
+* Diagonal cracks
+* Wide/major visible cracks
+
+### Other Visible Defects
+
+* Spalling
+* Concrete deterioration
+* Surface damage
+* Water-related damage
+* Dampness indicators
+* Corrosion/rust indicators where visually detectable
+* Brick/masonry damage
+* Possible settlement-related visual patterns
+
+The system must NOT falsely claim certainty when an image cannot support a reliable conclusion.
+
+---
+
+# RESULT UI
+
+After analysis, display a clean result card containing:
+
+### Structural Analysis
+
+**Detected Issue:**
+Example: Visible diagonal cracking
+
+**Risk Level:**
+
+* Low
+* Moderate
+* High
+* Critical
+
+**Confidence:**
+Example: 87%
+
+**Affected Area:**
+Example: Wall / Column / Ceiling
+
+**Visual Evidence:**
+Explain what was detected in the uploaded image.
+
+**Recommended Action:**
+Provide a practical next step.
+
+---
+
+# SAFETY REQUIREMENT
+
+This is an AI-assisted visual screening tool, NOT a certified structural engineering inspection.
+
+Therefore, never state:
+
+* "The building is definitely unsafe."
+* "The building is safe."
+* "No structural problem exists."
+
+unless the system is explicitly designed and validated for such a claim.
+
+Use language such as:
+
+* "Visible signs detected"
+* "Potential structural concern"
+* "Further inspection recommended"
+* "Professional structural assessment recommended"
+
+For high-risk or uncertain results, clearly recommend inspection by a qualified structural engineer.
+
+---
+
+# AI BACKEND INTEGRATION
+
+Use the existing project's configured AI/backend architecture.
+
+Do NOT create a fake AI response.
+
+If the project already has an AI service such as:
+
+```text
+Frontend
+   ↓
+Backend API
+   ↓
+AI / Computer Vision Service
+   ↓
+Analysis Result
+   ↓
+Frontend
+```
+
+use that architecture.
+
+If an AI endpoint already exists, connect the scanner to it.
+
+If the endpoint expects multipart/form-data, send the uploaded image correctly.
+
+Example conceptual flow:
+
+```text
+POST /api/structural/analyze
+
+FormData:
+  image: uploadedImage
+```
+
+The backend should return structured JSON similar to:
+
+```json
+{
+  "detected": true,
+  "defectType": "Diagonal Crack",
+  "riskLevel": "Moderate",
+  "confidence": 0.87,
+  "affectedArea": "Wall",
+  "description": "A visible diagonal crack pattern was detected.",
+  "recommendation": "Arrange a professional inspection to assess the cause and progression."
+}
+```
+
+Adapt this structure to the project's existing API conventions instead of blindly creating a duplicate API.
+
+---
+
+# LOADING STATE
+
+While the AI is analyzing the image, show:
+
+**Analyzing Structural Image...**
+
+with a proper loading indicator.
+
+Disable duplicate submissions while analysis is running.
+
+---
+
+# ERROR STATE
+
+If analysis fails:
+
+Show:
+
+**Analysis Failed**
+
+Unable to analyze this image right now.
+
+Please try again with a clear image.
+
+Do not display fake results.
+
+---
+
+# EMPTY STATE
+
+Before uploading an image:
+
+Keep the current clean upload interface.
+
+Show:
+
+**No Image Uploaded**
+
+Upload a clear image of a wall, column, ceiling, concrete surface, or brickwork to begin structural analysis.
+
+---
+
+# UI REQUIREMENT
+
+Keep the existing visual design of the AI Structural Defect Scanner.
+
+Only improve the functionality and result presentation.
+
+Do NOT unnecessarily redesign the page.
+
+---
+
+# 5. REMOVE HARDCODED DEMO DATA WHERE IT AFFECTS THESE FLOWS
+
+Search the frontend and backend for:
+
+* Hardcoded service requests
+* Demo customer data
+* Static service history
+* Static notifications
+* Static expert assignments
+* Static bill records
+* Fake scanner results
+
+Remove or replace them with real authenticated/user-specific data where they are being used by these modules.
+
+Do NOT remove legitimate seed/demo data if it is explicitly required elsewhere in the application.
+
+---
+
+# 6. AUTHENTICATION-AWARE DATA FLOW
+
+The application should follow:
+
+```text
+LOGIN
+  ↓
+Firebase Authentication
+  ↓
+Get authenticated user UID
+  ↓
+Load user-specific data
+  ↓
+Dashboard
+  ↓
+Service History
+  ↓
+Only current user's requests
+```
+
+For a new user:
+
+```text
+LOGIN
+  ↓
+Firebase UID
+  ↓
+No service requests found
+  ↓
+Empty Service History
+```
+
+After creating a request:
+
+```text
+Create Request
+  ↓
+Save with current user's UID
+  ↓
+Request created
+  ↓
+Notification/event generated
+  ↓
+Service History updated
+  ↓
+Module message displayed
+```
+
+---
+
+# 7. DO NOT BREAK EXISTING AUTHENTICATION
+
+The existing Google/Firebase authentication must continue working.
+
+Do NOT:
+
+* Replace Firebase Authentication
+* Remove Google login
+* Change login UI unnecessarily
+* Hardcode a user
+* Use one shared user account
+* Store one user's service data globally
+
+---
+
+# 8. RESPONSIVE BEHAVIOR
+
+All three fixes must work on:
+
+* Desktop
+* Laptop
+* Tablet
+* Mobile
+
+The circular budget graph must remain centered.
+
+The service history empty state must remain visually clean.
+
+The structural scanner upload and result cards must remain usable on smaller screens.
+
+---
+
+# 9. FINAL VALIDATION
+
+After implementing the fixes, test this exact sequence.
+
+### TEST 1 — New User
+
+1. Create/login with a new account.
+2. Open Dashboard.
+3. Open Service History.
+4. Confirm there are ZERO fake service requests.
+5. Confirm there are ZERO fake notifications.
+
+### TEST 2 — Create Request
+
+1. Raise a service request.
+2. Confirm it is stored with the authenticated user's UID.
+3. Confirm the request appears in Service History.
+4. Confirm the relevant message appears only after the request is created.
+
+### TEST 3 — Logout/Login Another User
+
+1. Logout.
+2. Login with another account.
+3. Open Service History.
+4. Confirm the previous user's requests are NOT visible.
+5. Confirm the new user starts with an empty state if they have no requests.
+
+### TEST 4 — Structural Scanner
+
+1. Open AI Structural Defect Scanner.
+2. Upload a valid structural image.
+3. Confirm the image preview appears.
+4. Confirm the image is actually sent to the AI/backend.
+5. Confirm the system waits while analysis occurs.
+6. Confirm a real analysis result is displayed.
+7. Confirm no fake result is generated if the AI/backend fails.
+8. Test an invalid/unsupported file.
+9. Confirm a proper error message appears.
+
+### TEST 5 — Budget Graph
+
+1. Open the budget graph.
+2. Confirm all colored segments are inside the circular graph.
+3. Confirm the center text is correctly aligned.
+4. Confirm the graph is responsive.
+
+---
+
+# FINAL INSTRUCTION
+
+First inspect the existing project structure, authentication implementation, API routes, database models, service-history logic, notification logic, and AI scanner implementation.
+
+Then modify the EXISTING implementation.
+
+Do NOT create a completely new application.
+
+Do NOT replace working components unnecessarily.
+
+Do NOT introduce duplicate authentication, duplicate APIs, or duplicate database models.
+
+Fix the root causes of the three problems:
+
+1. **Circular graph visual positioning**
+2. **User-specific service history and event-driven messages**
+3. **Actual AI-powered structural defect analysis**
+
+After making the changes, verify that the application builds successfully and that existing functionality remains intact.
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-16T12:19:50+05:30.
+
+The user's current state is as follows:
+Active Document: d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- d:\Buildpilot-frontend\frontend\src\components\auth\GoogleLoginButton.tsx (LANGUAGE_TSX)
+- d:\Buildpilot-frontend\frontend\src\index.css (LANGUAGE_CSS)
+- d:\Buildpilot-frontend\frontend\src\features\AuthPage.tsx (LANGUAGE_TSX)
+- d:\Buildpilot-frontend\frontend\src\components\auth\ProtectedRoute.tsx (LANGUAGE_TSX)
+- d:\Buildpilot-frontend\.git\COMMIT_EDITMSG (LANGUAGE_UNSPECIFIED)
+Running terminal commands:
+- npm run dev (in d:\Buildpilot-frontend\frontend, running for 13m50s)
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.5 Flash (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
+Comments on artifact URI: file:///c%3A/Users/lenovo/.gemini/antigravity-ide/brain/3a5dc173-add8-4a36-ba08-0316cd795365/implementation_plan.md
+
+The user has approved this document.
+
+
+<USER_REQUEST>
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-16T12:25:11+05:30.
+
+The user's current state is as follows:
+Active Document: d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+</ADDITIONAL_METADATA>
+<USER_REQUEST>
+# BUILDCORE — ROLE-BASED ACCESS CONTROL MASTER PROMPT
+
+Fix the portal architecture in the existing BuildCore application.
+
+## MAIN REQUIREMENT
+
+The current Client Dashboard displays:
+
+* Client Portal
+* Professional Portal
+* Admin Portal
+
+This is WRONG.
+
+A normal client must NEVER see Professional Portal or Admin Portal in the client-facing UI.
+
+Professional and Admin modules must be controlled through **role-based authentication and authorization at the backend/API level**.
+
+The frontend must only render the portal that the authenticated user's role is authorized to access.
+
+---
+
+# 1. REMOVE PROFESSIONAL AND ADMIN TABS FROM CLIENT UI
+
+Remove these tabs/buttons from the Client Portal UI:
+
+* Professional Portal
+* Admin Portal
+
+A client should see only:
+
+**Client Portal**
+
+Do NOT simply hide them with CSS.
+
+Do NOT rely only on frontend conditional rendering.
+
+The backend/API must enforce authorization as well.
+
+---
+
+# 2. IMPLEMENT ROLE-BASED ACCESS CONTROL
+
+Use the existing authentication system, including Firebase Authentication if it is already configured.
+
+Every authenticated user must have a role.
+
+Supported roles:
+
+```text
+client
+professional
+admin
+```
+
+Example user structure:
+
+```text
+User
+├── uid
+├── name
+├── email
+└── role
+```
+
+Example:
+
+```json
+{
+  "uid": "firebase-user-uid",
+  "name": "Mohamed Shahith",
+  "email": "user@example.com",
+  "role": "client"
+}
+```
+
+The role must come from a trusted backend/database source.
+
+Do NOT allow the frontend to freely choose or modify its own role.
+
+---
+
+# 3. CLIENT ROLE
+
+If:
+
+```text
+role = client
+```
+
+the user can access ONLY the Client Portal.
+
+Client should have access to features such as:
+
+* Dashboard
+* My Projects
+* Saved Sites
+* Messages
+* Service Requests
+* Service History
+* AI Estimator
+* AR Visualiser
+* AI Studio
+* Marketplace
+* Homecare
+
+depending on the existing application's permissions.
+
+The client must NOT have access to:
+
+* Professional Portal
+* Admin Portal
+* Professional APIs
+* Admin APIs
+* Admin dashboards
+* Admin management functions
+* Professional management functions
+
+---
+
+# 4. PROFESSIONAL ROLE
+
+If:
+
+```text
+role = professional
+```
+
+the user should be routed to the Professional Portal.
+
+The Professional Portal should contain professional-specific functionality such as:
+
+* Assigned projects
+* Client requests
+* Service requests
+* Project management
+* Job status
+* Client communication
+* Relevant professional tools
+
+Do NOT expose the Professional Portal to clients.
+
+---
+
+# 5. ADMIN ROLE
+
+If:
+
+```text
+role = admin
+```
+
+the user should be routed to the Admin Portal.
+
+The Admin Portal should contain admin-specific functionality such as:
+
+* User management
+* Professional management
+* Client management
+* Service management
+* Project management
+* System monitoring
+* Reports
+* Administrative controls
+
+Do NOT expose the Admin Portal to clients.
+
+---
+
+# 6. BACKEND/API AUTHORIZATION — CRITICAL
+
+The backend must enforce the role.
+
+Do NOT depend only on frontend route protection.
+
+Every protected API endpoint must verify:
+
+1. The user is authenticated.
+2. The authentication token is valid.
+3. The user's role is authorized for that endpoint.
+
+Conceptually:
+
+```text
+Client
+   ↓
+Firebase Authentication
+   ↓
+ID Token
+   ↓
+Backend API
+   ↓
+Verify Token
+   ↓
+Get User UID
+   ↓
+Get Trusted User Role
+   ↓
+Check Permission
+   ↓
+Allow / Deny
+```
+
+---
+
+# 7. EXAMPLE API PERMISSIONS
+
+Use role middleware/guards similar to:
+
+```text
+authenticateUser
+requireRole("client")
+requireRole("professional")
+requireRole("admin")
+```
+
+Examples:
+
+```text
+GET /api/client/*
+        → client
+
+GET /api/professional/*
+        → professional
+
+GET /api/admin/*
+        → admin
+```
+
+Admin endpoints must reject clients.
+
+Professional endpoints must reject clients unless explicitly required by a shared endpoint.
+
+A client attempting to call:
+
+```text
+/api/admin/*
+```
+
+must receive:
+
+```text
+403 Forbidden
+```
+
+A client attempting to call:
+
+```text
+/api/professional/*
+```
+
+must also receive:
+
+```text
+403 Forbidden
+```
+
+Never return admin/professional data to an unauthorized client.
+
+---
+
+# 8. FRONTEND ROUTING
+
+Implement role-aware routing.
+
+Conceptually:
+
+```text
+Authenticated User
+        ↓
+Get Role
+        ↓
+ ┌───────────────┐
+ │               │
+Client       Professional       Admin
+ │               │                │
+ ↓               ↓                ↓
+Client Portal   Professional     Admin
+                Portal           Portal
+```
+
+Routes should be protected.
+
+Example conceptual routes:
+
+```text
+/client/*
+/professional/*
+/admin/*
+```
+
+If a client manually enters:
+
+```text
+/professional
+```
+
+redirect them to:
+
+```text
+/client
+```
+
+If a client manually enters:
+
+```text
+/admin
+```
+
+redirect them to:
+
+```text
+/client
+```
+
+Do not merely hide the page. The route itself must be protected.
+
+---
+
+# 9. ROLE SHOULD NOT COME FROM URL OR LOCAL STORAGE
+
+Never determine authorization using:
+
+```text
+?role=admin
+```
+
+or:
+
+```text
+localStorage.role = "admin"
+```
+
+or:
+
+```text
+sessionStorage.role = "admin"
+```
+
+or a frontend-only variable.
+
+These can be manipulated by users.
+
+The backend must make the final authorization decision.
+
+---
+
+# 10. FIREBASE AUTHENTICATION
+
+If Firebase Authentication is already used:
+
+Use the authenticated Firebase UID as the identity.
+
+Conceptually:
+
+```text
+Firebase Auth
+      ↓
+User UID
+      ↓
+Backend
+      ↓
+User record
+      ↓
+Trusted role
+```
+
+Do not create a second authentication system if Firebase Authentication is already working.
+
+Do not duplicate authentication logic.
+
+---
+
+# 11. ROLE STORAGE
+
+Use the existing database architecture.
+
+If MongoDB is already being used, store user roles in the existing user collection/model.
+
+Example:
+
+```json
+{
+  "uid": "firebase-uid",
+  "email": "user@example.com",
+  "role": "client",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+Possible values:
+
+```text
+client
+professional
+admin
+```
+
+Do not allow arbitrary role strings.
+
+---
+
+# 12. DEFAULT ROLE FOR NEW USERS
+
+Every newly registered normal customer should automatically receive:
+
+```text
+role = client
+```
+
+A newly registered user must NEVER automatically become:
+
+```text
+professional
+```
+
+or:
+
+```text
+admin
+```
+
+Professional/Admin roles must be assigned through a trusted administrative process.
+
+---
+
+# 13. IMPORTANT SECURITY REQUIREMENT
+
+Do NOT solve this problem with:
+
+```css
+display: none;
+```
+
+Do NOT solve it only with:
+
+```javascript
+if (role === "client") hideAdmin();
+```
+
+Those are UI protections, not security.
+
+The actual security boundary must be:
+
+```text
+Backend/API authorization
+```
+
+Frontend role-based rendering is only for user experience.
+
+---
+
+# 14. CLIENT DASHBOARD UI
+
+For a client, replace the current:
+
+```text
+Client Portal | Professional Portal | Admin Portal
+```
+
+with a clean client-only experience.
+
+For example:
+
+```text
+Client Portal
+```
+
+or remove the portal selector completely if it is unnecessary.
+
+Keep the existing BuildCore visual design.
+
+Do NOT redesign the dashboard unnecessarily.
+
+---
+
+# 15. PROFESSIONAL AND ADMIN ACCESS
+
+Professional and Admin users should access their portals through their authorized routes.
+
+They should NOT need to use a client-facing portal switcher.
+
+The application should determine the correct portal from the authenticated user's role.
+
+Example:
+
+```text
+Login
+  ↓
+Authentication successful
+  ↓
+Fetch trusted role
+  ↓
+role = client
+  → /client
+
+role = professional
+  → /professional
+
+role = admin
+  → /admin
+```
+
+---
+
+# 16. DIRECT URL SECURITY TEST
+
+Test all combinations.
+
+### Client
+
+```text
+/client       → ALLOW
+/professional → DENY
+/admin        → DENY
+```
+
+### Professional
+
+```text
+/client       → only if explicitly allowed
+/professional → ALLOW
+/admin        → DENY
+```
+
+### Admin
+
+```text
+/admin        → ALLOW
+/professional → according to configured permission
+/client       → according to configured permission
+```
+
+---
+
+# 17. API SECURITY TEST
+
+Test the API directly, not only through the frontend.
+
+For a client token:
+
+```text
+GET /api/client/...        → 200
+GET /api/professional/... → 403
+GET /api/admin/...        → 403
+```
+
+For a professional token:
+
+```text
+GET /api/professional/... → 200
+GET /api/admin/...        → 403
+```
+
+For an admin token:
+
+```text
+GET /api/admin/...        → 200
+```
+
+Adapt the exact endpoint names to the existing project.
+
+---
+
+# 18. DO NOT BREAK EXISTING BUILDCORE FEATURES
+
+Preserve:
+
+* BuildCore branding
+* Navigation
+* Client dashboard
+* Firebase login
+* Google authentication
+* Existing project cards
+* Existing service-request functionality
+* AI modules
+* Marketplace
+* Homecare
+* Existing backend
+* Existing database
+* Existing API architecture
+
+Only modify the authorization, routing, and portal-selection behavior required for this fix.
+
+---
+
+# 19. INSPECT THE EXISTING PROJECT FIRST
+
+Before changing code, inspect:
+
+* Firebase authentication
+* User model
+* Database schema
+* Existing API routes
+* Existing middleware
+* Frontend routes
+* Portal components
+* Dashboard components
+* Existing role logic
+* Existing environment variables
+
+Do not create duplicate authentication or duplicate user models if these already exist.
+
+Reuse the existing architecture.
+
+---
+
+# 20. FINAL EXPECTED RESULT
+
+When a normal client logs in:
+
+```text
+LOGIN
+  ↓
+Firebase Authentication
+  ↓
+Backend verifies identity
+  ↓
+Role = client
+  ↓
+Client Dashboard
+```
+
+The client sees:
+
+```text
+CLIENT PORTAL
+```
+
+and does NOT see:
+
+```text
+PROFESSIONAL PORTAL
+ADMIN PORTAL
+```
+
+If a client attempts to access either portal directly, the backend/API rejects the request and the frontend redirects them to their authorized Client Portal.
+
+Professional and Admin portals remain available to their respective authorized users through secure role-based access.
+
+## FINAL INSTRUCTION
+
+Implement this as a proper **RBAC (Role-Based Access Control)** system.
+
+The frontend controls visibility.
+
+The backend/API controls authorization.
+
+The authenticated identity comes from Firebase.
+
+The trusted role comes from the backend/database.
+
+Never trust the client-side role for security decisions.
+
+After implementation:
+
+1. Run the frontend build.
+2. Run the backend.
+3. Test client login.
+4. Test professional login.
+5. Test admin login.
+6. Test direct URL access.
+7. Test direct API access.
+8. Confirm unauthorized users receive `403 Forbidden`.
+9. Confirm no Professional/Admin UI appears in the Client Portal.
+10. Confirm existing BuildCore functionality still works.
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-16T12:33:05+05:30.
+
+The user's current state is as follows:
+Active Document: d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Running terminal commands:
+- npm run dev (in d:\Buildpilot-frontend\frontend, running for 2m58s)
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Gemini 3.5 Flash (High) to Gemini 3.1 Pro (Low). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
+Comments on artifact URI: file:///c%3A/Users/lenovo/.gemini/antigravity-ide/brain/3a5dc173-add8-4a36-ba08-0316cd795365/implementation_plan.md
+
+The user has approved this document.
+
+
+<USER_REQUEST>
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-16T12:34:50+05:30.
+
+The user's current state is as follows:
+Active Document: d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Running terminal commands:
+- npm run dev (in d:\Buildpilot-frontend\frontend, running for 4m42s)
+</ADDITIONAL_METADATA>
+<USER_REQUEST>
+give me other two module 
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-16T12:38:45+05:30.
+
+The user's current state is as follows:
+Active Document: d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- d:\Buildpilot-frontend\frontend\.env.example (LANGUAGE_UNSPECIFIED)
+Running terminal commands:
+- npm run dev (in d:\Buildpilot-frontend\frontend, running for 8m37s)
+</ADDITIONAL_METADATA>
