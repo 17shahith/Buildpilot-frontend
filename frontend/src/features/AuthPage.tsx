@@ -11,6 +11,7 @@ export const AuthPage: React.FC = () => {
   const [authError, setAuthError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [signupRole, setSignupRole] = useState<'client' | 'pro' | 'admin'>('client');
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -51,9 +52,13 @@ export const AuthPage: React.FC = () => {
         await signInWithEmail(email, password);
         navigate('/main');
       } else if (mode === 'signup') {
-        await signUpWithEmail(email, password);
+        await signUpWithEmail(email, password, signupRole);
         setSuccessMsg('Account created successfully! Welcome to BuildCore.');
-        setTimeout(() => navigate('/main'), 1500);
+        setTimeout(() => {
+          if (signupRole === 'admin') navigate('/main/admin');
+          else if (signupRole === 'pro') navigate('/main/professional');
+          else navigate('/main/client');
+        }, 1500);
       } else if (mode === 'forgot') {
         await resetPassword(email);
         setSuccessMsg('Password reset link sent to your email.');
@@ -169,6 +174,21 @@ export const AuthPage: React.FC = () => {
               </div>
             )}
 
+            {mode === 'signup' && (
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700">Account Type</label>
+                <select
+                  value={signupRole}
+                  onChange={(e) => setSignupRole(e.target.value as 'client' | 'pro' | 'admin')}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#F97316]/50 bg-white text-slate-800 focus:ring-1 focus:ring-[#F97316]/30 shadow-sm"
+                >
+                  <option value="client">Client (Customer)</option>
+                  <option value="pro">Professional (Contractor/Architect)</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isSubmitting}
@@ -247,6 +267,78 @@ export const AuthPage: React.FC = () => {
               </button>
             )}
           </div>
+
+          {/* Quick Demo / Developer Sign-In Panel */}
+          <div className="pt-6 border-t border-slate-100 space-y-3">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+              Developer Quick Access Portals
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsSubmitting(true);
+                  try {
+                    await signInWithEmail('admin@buildpilot.in', 'password');
+                    navigate('/main/admin');
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="flex flex-col items-center justify-center p-2.5 border border-red-100 hover:border-red-300 hover:bg-red-50/20 rounded-2xl transition-all duration-300 group"
+              >
+                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-1.5 group-hover:scale-110 transition-transform">
+                  🛡️
+                </div>
+                <span className="text-[9px] font-black text-red-600 tracking-wider">Admin</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsSubmitting(true);
+                  try {
+                    await signInWithEmail('pro@buildpilot.in', 'password');
+                    navigate('/main/professional');
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="flex flex-col items-center justify-center p-2.5 border border-orange-100 hover:border-orange-300 hover:bg-orange-50/20 rounded-2xl transition-all duration-300 group"
+              >
+                <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 mb-1.5 group-hover:scale-110 transition-transform">
+                  💼
+                </div>
+                <span className="text-[9px] font-black text-orange-600 tracking-wider">Pro Portal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsSubmitting(true);
+                  try {
+                    await signInWithEmail('client@buildpilot.in', 'password');
+                    navigate('/main/client');
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="flex flex-col items-center justify-center p-2.5 border border-blue-100 hover:border-blue-300 hover:bg-blue-50/20 rounded-2xl transition-all duration-300 group"
+              >
+                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mb-1.5 group-hover:scale-110 transition-transform">
+                  👤
+                </div>
+                <span className="text-[9px] font-black text-blue-600 tracking-wider">Client</span>
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

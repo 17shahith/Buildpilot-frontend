@@ -71,7 +71,9 @@ function App() {
           setCurrentView={(view) => {
             if (view === 'landing') navigate('/');
             else if (view === 'auth') navigate('/auth');
-            else if (view === 'dashboard-client') navigate('/main/client');
+            else if (view === 'dashboard-client' || view === 'client') navigate('/main/client');
+            else if (view === 'dashboard-pro' || view === 'professional') navigate('/main/professional');
+            else if (view === 'dashboard-admin' || view === 'admin') navigate('/main/admin');
             else navigate(`/main/${view}`);
           }}
           setMarketplaceTab={setMarketplaceTab}

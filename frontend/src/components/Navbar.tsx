@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Cpu, Eye, Sparkles, Briefcase, Home, LayoutDashboard } from 'lucide-react';
+import { Menu, X, Cpu, Eye, Sparkles, Briefcase, Home, LayoutDashboard, Shield } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,17 +19,26 @@ const Navbar: React.FC<NavbarProps> = ({
   const location = useLocation();
 
   const isMainApp = location.pathname.startsWith('/main');
-  const { user, logout } = useAuth();
+  const { user, userRole, logout } = useAuth();
 
   // Nav items when in the Main App (/main)
   const appNavItems = [
-    { id: 'dashboard-client', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    ...(userRole === 'admin' ? [{ id: 'admin', label: 'Admin Portal', icon: <Shield className="w-4 h-4" /> }] : []),
+    ...(userRole === 'pro' || userRole === 'admin' ? [{ id: 'professional', label: 'Pro Portal', icon: <Briefcase className="w-4 h-4" /> }] : []),
+    ...(userRole === 'client' || userRole === 'admin' ? [{ id: 'client', label: 'Client Portal', icon: <LayoutDashboard className="w-4 h-4" /> }] : []),
     { id: 'estimator', label: 'AI Estimator', icon: <Cpu className="w-4 h-4" /> },
     { id: 'ar', label: 'AR Visualiser', icon: <Eye className="w-4 h-4" /> },
     { id: 'studio', label: 'AI Studio', icon: <Sparkles className="w-4 h-4" /> },
     { id: 'marketplace', label: 'Marketplace', icon: <Briefcase className="w-4 h-4" /> },
     { id: 'homecare', label: 'HomeCare', icon: <Home className="w-4 h-4" /> },
   ];
+
+  const isNavItemActive = (id: string) => {
+    if (id === 'client' && (currentView === 'client' || currentView === 'dashboard-client')) return true;
+    if (id === 'professional' && (currentView === 'professional' || currentView === 'dashboard-pro')) return true;
+    if (id === 'admin' && (currentView === 'admin' || currentView === 'dashboard-admin')) return true;
+    return currentView === id;
+  };
 
   // Nav items when on Landing Page (/) or Auth (/auth)
   const landingNavItems = [
@@ -98,7 +107,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   key={item.id}
                   onClick={() => handleAppNavItemClick(item.id)}
                   className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all duration-300 ${
-                    currentView === item.id
+                    isNavItemActive(item.id)
                       ? 'bg-[#F97316]/10 text-[#F97316]'
                       : 'text-gray-500 hover:text-[#0F172A] hover:-translate-y-0.5'
                   }`}
@@ -183,7 +192,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 key={item.id}
                 onClick={() => handleAppNavItemClick(item.id)}
                 className={`flex items-center space-x-2 text-left text-xs uppercase font-extrabold tracking-widest py-2 ${
-                  currentView === item.id ? 'text-[#F97316]' : 'text-gray-500'
+                  isNavItemActive(item.id) ? 'text-[#F97316]' : 'text-gray-500'
                 }`}
               >
                 {item.icon}
