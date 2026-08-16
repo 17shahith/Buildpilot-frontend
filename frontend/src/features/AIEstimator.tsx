@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Cpu, IndianRupee, Hammer, BarChart3, AlertCircle, FileText, CheckCircle2, RefreshCw, Sparkles, TrendingUp, Info } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../utils/api';
+import { clientMockService } from '../services/clientMockService';
 
 const segmentColors = [
   '#FF5722', // Excavation & Foundations
@@ -19,6 +20,21 @@ const AIEstimator: React.FC = () => {
   const [type, setType] = useState<'new' | 'renovation'>('new');
   const [floors, setFloors] = useState<number>(1);
   const [loadingEstimate, setLoadingEstimate] = useState<boolean>(false);
+
+  const handleSaveEstimate = () => {
+    clientMockService.saveEstimate({
+      title: `${type === 'new' ? 'New Build' : 'Renovation'} - ${area} sqft`,
+      totalEstimate: estimateData.totalEstimate,
+      area,
+      quality
+    });
+    confetti({
+      particleCount: 50,
+      spread: 40,
+      origin: { y: 0.6 }
+    });
+    alert('Estimate successfully saved to your bookmarks! Open "Saved Items" tab to review or initialize a contract project.');
+  };
 
   // Custom rates and quantities overrides
   const [customRates, setCustomRates] = useState<Record<string, number>>({});
@@ -489,13 +505,22 @@ const AIEstimator: React.FC = () => {
                   ₹{estimateData.totalEstimate.toLocaleString()}
                 </p>
               </div>
-              <button
-                onClick={triggerExport}
-                className="px-4 py-2.5 rounded-xl bg-brandDark-black border border-brandDark-border hover:border-primary text-xs font-semibold text-gray-300 hover:text-white flex items-center space-x-1.5 transition-all light-theme:bg-white light-theme:border-brandLight-border light-theme:text-gray-700"
-              >
-                <FileText className="w-3.5 h-3.5 text-primary" />
-                <span>Export PDF Quote</span>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveEstimate}
+                  className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-glow"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
+                  <span>Save to Project</span>
+                </button>
+                <button
+                  onClick={triggerExport}
+                  className="px-4 py-2.5 rounded-xl bg-brandDark-black border border-brandDark-border hover:border-primary text-xs font-semibold text-gray-300 hover:text-white flex items-center space-x-1.5 transition-all light-theme:bg-white light-theme:border-brandLight-border light-theme:text-gray-700"
+                >
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                  <span>Export PDF Quote</span>
+                </button>
+              </div>
             </div>
 
             {/* TAB SELECTOR HEADER */}

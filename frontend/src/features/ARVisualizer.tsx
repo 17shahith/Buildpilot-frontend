@@ -1,8 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Eye, Camera, Check, RotateCcw, Share2, Layers, Compass, Zap, Move, Download, Pipette, Ruler } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { clientMockService } from '../services/clientMockService';
 
 const ARVisualizer: React.FC = () => {
+  const handleSaveARConfig = () => {
+    clientMockService.saveRoomDesign({
+      roomType: 'living',
+      material: floorType,
+      finish: paintColor
+    });
+    confetti({
+      particleCount: 50,
+      spread: 40,
+      origin: { y: 0.6 }
+    });
+    alert('AR visualization configuration successfully saved to your bookmarks! Access it under "Saved Items" tab.');
+  };
+
   // Config state
   const [paintColor, setPaintColor] = useState<string>('#E0E0E6'); // Default light grey
   const [floorType, setFloorType] = useState<'hardwood' | 'marble' | 'carpet' | 'concrete'>('hardwood');
@@ -682,6 +697,13 @@ const ARVisualizer: React.FC = () => {
             >
               <Share2 className="w-3.5 h-3.5 text-primary" />
               <span>Share AR Session</span>
+            </button>
+            <button
+              onClick={handleSaveARConfig}
+              className="px-5 py-3 rounded-xl bg-primary hover:bg-primary-dark text-white flex items-center space-x-1.5 text-xs font-semibold transition-all shadow-glow"
+            >
+              <Zap className="w-3.5 h-3.5 text-white" />
+              <span>Save to Project</span>
             </button>
           </div>
         </div>
