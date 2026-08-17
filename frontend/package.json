@@ -9,12 +9,16 @@
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "test": "echo \"No tests specified\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed": "node scripts/seed.js",
+    "make-admin": "node scripts/make_admin.js",
+    "make-pro": "node scripts/make_pro.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
     "autoprefixer": "^10.5.4",
     "canvas-confetti": "^1.9.4",
+    "firebase": "^12.17.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.27.0",
     "postcss": "^8.5.23",

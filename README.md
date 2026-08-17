@@ -1,99 +1,64 @@
 # Buildpilot Frontend
 
-## Overview
+## Reorganized Repository Architecture
 
-**Buildpilot Frontend** is a modern, production‑ready web interface built with **React**, **TypeScript**, and **Vite**. It provides a fast, hot‑module‑reloaded development experience while adhering to strict linting rules via **Oxlint**. The UI serves as the client side of the Buildpilot platform, enabling users to interact with AI‑assisted construction and property marketplace features.
+The Buildpilot frontend has been consolidated into a clean, modern, and production-ready structure. The `frontend/` directory serves as the **one and only** authoritative workspace root for the React + TypeScript application.
 
-## Features
-
-- **Lightning‑fast development** with Vite's native HMR.
-- **Type‑safe** React components powered by TypeScript.
-- **Robust linting** using Oxlint with optional type‑aware rules.
-- **Extensible plugin architecture** – add React or SWC plugins as needed.
-- **Responsive design** that works across desktops, tablets, and mobile devices.
-
-## Requirements
-
-- **Node.js** >= 18.x
-- **npm** (or **pnpm/yarn**) for package management
-- **Git** for version control
-- **Vite** (installed automatically as a dev dependency)
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-org/Buildpilot-frontend.git
-cd Buildpilot-frontend
-
-# Install dependencies
-npm install
+```text
+Buildpilot/
+├── .github/      - CI/CD configurations
+├── .gitignore    - Git ignore patterns
+├── README.md     - Main repository documentation
+└── frontend/     - Authoritative BuildPilot React App
 ```
 
-## Development
+All documentation has been moved to [frontend/docs/](file:///d:/Buildpilot-frontend/frontend/docs/) and scripts to [frontend/scripts/](file:///d:/Buildpilot-frontend/frontend/scripts/).
 
-Start the development server with hot reloading:
+---
+
+## Getting Started
+
+To run the application locally:
 
 ```bash
+# 1. Navigate into the frontend root
+cd frontend
+
+# 2. Install dependencies
+npm install
+
+# 3. Start the Vite development server
 npm run dev
 ```
 
-Open your browser at `http://localhost:5174` (or the port shown in the console). The app will automatically reload as you edit source files.
+The app will run locally at `http://localhost:5173` (or the port specified by Vite).
 
-## Building for Production
+---
+
+## Production Build & Deploy
+
+To verify TypeScript and compile the project for production, navigate to the `frontend/` directory and run:
 
 ```bash
+# Compile and build assets
 npm run build
 ```
 
-The optimized static assets will be emitted to the `dist/` directory, ready for deployment to any static hosting provider.
+The optimized static assets will be emitted to `frontend/dist/` ready to be served.
 
-## Linting & Formatting
+---
 
-```bash
-# Run Oxlint with the default configuration
-npm run lint
+## Administrative Scripts
 
-# Automatically fix lintable issues
-npm run lint:fix
-```
-
-To enable type‑aware linting, install the optional plugin:
+Database seeding and expert-role creation scripts are located in `frontend/scripts/` and can be run via:
 
 ```bash
-npm install -D oxlint-tsgolint
+# Run database seeding
+npm run seed
+
+# Create admin user
+npm run make-admin
+
+# Create expert/pro user
+npm run make-pro
 ```
-
-Then update `.oxlintrc.json` as described in the documentation.
-
-## Branch Strategy & CI/CD Pipeline
-
-We follow a strict branching model:
-- `main` represents production. Direct pushes are blocked.
-- `develop` is the integration branch.
-- Feature/bugfix development occurs in `feature/*` or `fix/*` branches.
-
-### CI/CD Workflow
-
-On every pull request to `main` or `develop`, a validation workflow runs:
-1. **Secret Scanning**: Runs Gitleaks to detect exposed credentials.
-2. **Quality Checks**: Resolves dependencies (`npm ci`), runs Oxlint, typechecks via TypeScript, runs placeholder unit tests, and verifies compilation.
-3. **Dependency Security**: Scans for vulnerabilities via `npm audit --audit-level=high`.
-
-Upon merging to `main` or `develop`, the **Frontend CD** workflow deploys the build artifact automatically to Vercel (using Vercel CLI and prebuilt binaries).
-
-### Environment Management
-
-A template `.env.example` is located in the `frontend/` folder. All browser-facing variables must be prefixed with `VITE_` (e.g., `VITE_API_BASE_URL`). Do not store secrets or backend credentials here.
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-1. Create a branch from `develop`.
-2. Ensure `npm run lint`, `npm run typecheck`, and `npm run build` pass successfully.
-3. Submit a pull request targeting `develop`.
-
-## License
-
-This project is licensed under the MIT License – see the `LICENSE` file for details.
-
