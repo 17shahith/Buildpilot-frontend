@@ -21,7 +21,7 @@
     "firebase": "^12.17.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.27.0",
-    "postcss": "^8.5.23",
+    "postcss": "^8.5.26",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.2",
