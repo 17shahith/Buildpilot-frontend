@@ -140,27 +140,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(mappedUser);
       setUserRole(data.user.role.toLowerCase());
     } catch (error: any) {
-      console.warn('Login fetch failed, falling back to mock authentication:', error);
-      
-      // If error is not a network failure (i.e. we got a response but it was an error), rethrow it
-      if (error instanceof Error && error.message !== 'Failed to fetch') {
-        throw error;
-      }
-      
-      // Mock Authentication Fallback:
-      const emailLower = email.toLowerCase();
-      let role: 'client' | 'pro' | 'admin' = 'client';
-      if (emailLower.includes('admin')) {
-        role = 'admin';
-      } else if (emailLower.includes('pro') || emailLower.includes('expert')) {
-        role = 'pro';
-      }
-      
-      const mockUser = getMockUserForRole(role, email);
-      const mockToken = `mock-token-${role}`;
-      localStorage.setItem('token', mockToken);
-      setUser(mockUser);
-      setUserRole(role);
+      console.error('Login failed:', error);
+      throw error;
     }
   };
 
@@ -184,19 +165,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Automatically log in after registration
       await signInWithEmail(email, password);
     } catch (error: any) {
-      console.warn('Signup fetch failed, falling back to mock registration:', error);
-      
-      // If error is not a network failure, rethrow it
-      if (error instanceof Error && error.message !== 'Failed to fetch') {
-        throw error;
-      }
-      
-      // Mock Registration Fallback:
-      const mockUser = getMockUserForRole(role, email);
-      const mockToken = `mock-token-${role}`;
-      localStorage.setItem('token', mockToken);
-      setUser(mockUser);
-      setUserRole(role);
+      console.error('Signup failed:', error);
+      throw error;
     }
   };
 

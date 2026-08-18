@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { professionalMockService } from '../../../services/api/professionalMockService';
 import { Briefcase, Clock, DollarSign, ArrowRight } from 'lucide-react';
 
 interface ProProjectsProps {
@@ -12,7 +11,62 @@ export const ProProjects: React.FC<ProProjectsProps> = ({
   setSelectedProjectId 
 }) => {
   const [activeTab, setActiveTab] = useState<'Active' | 'Pending' | 'Completed' | 'Cancelled'>('Active');
-  const projects = professionalMockService.getProjects();
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/projects', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const mapped = (json.data || []).map((bp: any) => {
+            const spent = bp.expenses ? bp.expenses.reduce((sum: number, e: any) => sum + e.amount, 0) : 0;
+            return {
+              id: bp.id,
+              name: bp.name,
+              clientName: bp.client?.email || 'Arun Kumar',
+              clientId: bp.clientId,
+              role: 'Architect',
+              budget: bp.budget,
+              progress: 0,
+              status: bp.status === 'PLANNING' ? 'Pending' : bp.status === 'COMPLETED' ? 'Completed' : 'Active',
+              currentMilestone: 'Initial Setup',
+              deadline: bp.deadline || '2026-12-31',
+              paymentStatus: 'In Escrow',
+              lastUpdate: 'Today',
+              description: bp.name,
+              requirements: [],
+              responsibilities: [],
+              timelineDays: 90,
+              startDate: bp.createdAt ? bp.createdAt.split('T')[0] : '2026-08-18',
+              milestones: [],
+              documents: [],
+              messages: [],
+              escrow: {
+                total: bp.budget,
+                deposited: bp.budget,
+                released: spent,
+                remaining: bp.budget - spent,
+                pendingRelease: 0,
+                status: 'held'
+              }
+            };
+          });
+          setProjects(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load contractor projects', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProjects();
+  }, []);
+
   const filteredProjects = projects.filter(p => p.status === activeTab);
 
   const tabs = ['Active', 'Pending', 'Completed', 'Cancelled'] as const;
@@ -21,6 +75,14 @@ export const ProProjects: React.FC<ProProjectsProps> = ({
     setSelectedProjectId(projectId);
     setActiveView('project-workspace');
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-brandLight-border p-12 rounded-3xl text-center space-y-4 shadow-sm text-xs font-bold text-slate-500">
+        Loading project operations...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

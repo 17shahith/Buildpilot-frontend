@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { clientMockService } from '../../../services/api/clientMockService';
 import { Briefcase, Clock, DollarSign, ArrowRight } from 'lucide-react';
 
 interface ClientProjectsProps {
@@ -12,8 +11,53 @@ export const ClientProjects: React.FC<ClientProjectsProps> = ({
   setSelectedProjectId
 }) => {
   const [activeTab, setActiveTab] = useState<'Active' | 'Upcoming' | 'Completed' | 'Archived'>('Active');
-  const projects = clientMockService.getProjects();
-  
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/projects', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          // Map backend project fields to frontend representation
+          const mapped = (json.data || []).map((bp: any) => {
+            const spent = bp.expenses ? bp.expenses.reduce((sum: number, e: any) => sum + e.amount, 0) : 0;
+            return {
+              id: bp.id,
+              name: bp.name,
+              professionalName: bp.contractor?.email || 'Rahul Architects',
+              professionalId: bp.contractorId || 'usr-3',
+              role: 'Contractor',
+              budget: bp.budget,
+              spent,
+              remaining: bp.budget - spent,
+              progress: 0,
+              status: bp.status === 'PLANNING' ? 'Upcoming' : bp.status === 'COMPLETED' ? 'Completed' : 'Active',
+              currentMilestone: 'Initial Setup',
+              deadline: bp.deadline || '2026-12-31',
+              paymentStatus: 'In Escrow',
+              startDate: bp.createdAt ? bp.createdAt.split('T')[0] : '2026-08-18',
+              description: bp.name,
+              requirements: ['Verify soil loads', 'Submit blueprint approvals'],
+              milestones: [],
+              documents: []
+            };
+          });
+          setProjects(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load projects', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProjects();
+  }, []);
+
   const filtered = projects.filter(p => {
     if (activeTab === 'Active') return p.status === 'Active';
     if (activeTab === 'Upcoming') return p.status === 'Upcoming';
@@ -27,6 +71,14 @@ export const ClientProjects: React.FC<ClientProjectsProps> = ({
   };
 
   const tabs = ['Active', 'Upcoming', 'Completed', 'Archived'] as const;
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-brandLight-border p-12 rounded-3xl text-center space-y-4 shadow-sm text-xs font-bold text-slate-500">
+        Loading project contracts...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

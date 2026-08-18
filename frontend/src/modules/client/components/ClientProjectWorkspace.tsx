@@ -14,9 +14,88 @@ export const ClientProjectWorkspace: React.FC<ClientProjectWorkspaceProps> = ({
   projectId,
   onBack
 }) => {
-  const [project, setProject] = useState<ClientProject | undefined>(
-    clientMockService.getProjectById(projectId)
-  );
+  const [project, setProject] = useState<ClientProject | undefined>(undefined);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    const loadProject = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/projects/${projectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const bp = await res.json();
+          const spent = bp.expenses ? bp.expenses.reduce((sum: number, e: any) => sum + e.amount, 0) : 0;
+          
+          // Calculate progress based on tasks completion rate
+          const allTasks = bp.milestones ? bp.milestones.flatMap((m: any) => m.tasks || []) : [];
+          const completedTasks = allTasks.filter((t: any) => t.status === 'COMPLETED');
+          const progress = allTasks.length > 0 ? Math.round((completedTasks.length / allTasks.length) * 100) : 0;
+
+          const mapped = {
+            id: bp.id,
+            name: bp.name,
+            professionalName: bp.contractor?.email || 'Rahul Architects',
+            professionalId: bp.contractorId || 'usr-3',
+            role: 'Contractor',
+            budget: bp.budget,
+            spent,
+            remaining: bp.budget - spent,
+            progress,
+            status: (bp.status === 'PLANNING' ? 'Upcoming' : bp.status === 'COMPLETED' ? 'Completed' : 'Active') as 'Upcoming' | 'Completed' | 'Active',
+            currentMilestone: bp.milestones?.[0]?.title || 'Initial Setup',
+            deadline: bp.deadline || '2026-12-31',
+            paymentStatus: 'In Escrow' as 'In Escrow',
+            startDate: bp.createdAt ? bp.createdAt.split('T')[0] : '2026-08-18',
+            description: bp.name,
+            requirements: ['Verify soil loads', 'Submit blueprint approvals'],
+            milestones: (bp.milestones || []).map((m: any, idx: number) => {
+              const milestoneTasks = m.tasks || [];
+              const doneTasks = milestoneTasks.filter((t: any) => t.status === 'COMPLETED');
+              const mProgress = milestoneTasks.length > 0 ? Math.round((doneTasks.length / milestoneTasks.length) * 100) : (m.status === 'Approved' ? 100 : 0);
+              return {
+                id: m.id,
+                name: m.title,
+                description: `Milestone Stage ${idx + 1}`,
+                progress: mProgress,
+                startDate: m.createdAt ? m.createdAt.split('T')[0] : '2026-08-18',
+                dueDate: '2026-12-31',
+                status: m.status === 'Approved' ? 'Approved' : m.status === 'COMPLETED' ? 'Completed' : 'In Progress',
+                deliverables: [],
+                paymentAmount: bp.budget / (bp.milestones.length || 1)
+              };
+            }),
+            documents: (bp.documents || []).map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              type: d.type,
+              uploadedBy: d.ownerId === bp.clientId ? 'Customer' : 'Professional',
+              date: d.createdAt ? d.createdAt.split('T')[0] : '2026-08-18',
+              version: 'v1'
+            })),
+            photos: [],
+            messages: [],
+            escrow: {
+              total: bp.budget,
+              deposited: bp.budget,
+              released: spent,
+              remaining: bp.budget - spent,
+              status: 'held' as 'held'
+            },
+            team: [{ name: 'Rahul Architects', role: 'Architect', specialization: 'Building Layout Plans', rating: 4.9, verified: true, email: 'pro@buildpilot.in' }],
+            activityLog: []
+          };
+          setProject(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load project details', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProject();
+  }, [projectId]);
 
   const [activeTab, setActiveTab] = useState<'Overview' | 'Project Map' | 'Milestones' | 'Budget' | 'Documents' | 'Photos' | 'Messages' | 'Team' | 'Activity'>('Overview');
 
@@ -40,6 +119,14 @@ export const ClientProjectWorkspace: React.FC<ClientProjectWorkspaceProps> = ({
   const [ratingVal, setRatingVal] = useState<number>(5);
   const [reviewCommentsText, setReviewCommentsText] = useState<string>('');
   const [reviewSubmitted, setReviewSubmitted] = useState<boolean>(false);
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-brandLight-border p-12 rounded-3xl text-center space-y-4 shadow-sm text-xs font-bold text-slate-500">
+        Loading project workspace...
+      </div>
+    );
+  }
 
   if (!project) {
     return (

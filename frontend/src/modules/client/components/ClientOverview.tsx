@@ -11,14 +11,56 @@ export const ClientOverview: React.FC<ClientOverviewProps> = ({
   setActiveView,
   setSelectedProjectId
 }) => {
-  const projects = clientMockService.getProjects();
+  const [projects, setProjects] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/projects', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const mapped = (json.data || []).map((bp: any) => {
+            const spent = bp.expenses ? bp.expenses.reduce((sum: number, e: any) => sum + e.amount, 0) : 0;
+            return {
+              id: bp.id,
+              name: bp.name,
+              professionalName: bp.contractor?.email || 'Rahul Architects',
+              professionalId: bp.contractorId || 'usr-3',
+              role: 'Contractor',
+              budget: bp.budget,
+              spent,
+              remaining: bp.budget - spent,
+              progress: 0,
+              status: bp.status === 'PLANNING' ? 'Upcoming' : bp.status === 'COMPLETED' ? 'Completed' : 'Active',
+              currentMilestone: 'Initial Setup',
+              deadline: bp.deadline || '2026-12-31',
+              paymentStatus: 'In Escrow',
+              startDate: bp.createdAt ? bp.createdAt.split('T')[0] : '2026-08-18',
+              description: bp.name,
+              requirements: [],
+              milestones: [],
+              documents: bp.documents || [],
+              escrow: { remaining: bp.budget - spent }
+            };
+          });
+          setProjects(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load projects in overview', err);
+      }
+    };
+    loadProjects();
+  }, []);
+
   const notifications = clientMockService.getNotifications();
   const unreadNotifications = notifications.filter(n => n.unread);
   const activeProj = projects.find(p => p.status === 'Active') || projects[0];
 
   const totalBudget = projects.reduce((acc, p) => acc + p.budget, 0);
   const totalPaid = projects.reduce((acc, p) => acc + p.spent, 0);
-  const totalEscrow = projects.reduce((acc, p) => acc + p.escrow.remaining, 0);
+  const totalEscrow = projects.reduce((acc, p) => acc + (p.escrow?.remaining || 0), 0);
   const reviewDocsCount = projects.reduce((acc, p) => acc + p.documents.length, 0);
 
   // Recommendations mock

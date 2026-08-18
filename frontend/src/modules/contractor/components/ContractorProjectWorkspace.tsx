@@ -12,9 +12,85 @@ export const ProProjectWorkspace: React.FC<ProProjectWorkspaceProps> = ({
   projectId, 
   onBack 
 }) => {
-  const [project, setProject] = useState<ProProject | undefined>(
-    professionalMockService.getProjectById(projectId)
-  );
+  const [project, setProject] = useState<ProProject | undefined>(undefined);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    const loadProject = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/projects/${projectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const bp = await res.json();
+          const spent = bp.expenses ? bp.expenses.reduce((sum: number, e: any) => sum + e.amount, 0) : 0;
+          
+          // Calculate progress based on tasks completion rate
+          const allTasks = bp.milestones ? bp.milestones.flatMap((m: any) => m.tasks || []) : [];
+          const completedTasks = allTasks.filter((t: any) => t.status === 'COMPLETED');
+          const progress = allTasks.length > 0 ? Math.round((completedTasks.length / allTasks.length) * 100) : 0;
+
+          const mapped = {
+            id: bp.id,
+            name: bp.name,
+            clientName: bp.client?.email || 'Arun Kumar',
+            clientId: bp.clientId,
+            role: 'Architect',
+            budget: bp.budget,
+            progress,
+            status: (bp.status === 'PLANNING' ? 'Pending' : bp.status === 'COMPLETED' ? 'Completed' : 'Active') as 'Pending' | 'Completed' | 'Active',
+            currentMilestone: bp.milestones?.[0]?.title || 'Initial Setup',
+            deadline: bp.deadline || '2026-12-31',
+            paymentStatus: 'In Escrow' as 'In Escrow',
+            lastUpdate: 'Today',
+            description: bp.name,
+            requirements: ['Client custom request design specifications'],
+            responsibilities: ['Primary project designer and administrator'],
+            timelineDays: 90,
+            startDate: bp.createdAt ? bp.createdAt.split('T')[0] : '2026-08-18',
+            milestones: (bp.milestones || []).map((m: any) => {
+              const milestoneTasks = m.tasks || [];
+              const doneTasks = milestoneTasks.filter((t: any) => t.status === 'COMPLETED');
+              const mProgress = milestoneTasks.length > 0 ? Math.round((doneTasks.length / milestoneTasks.length) * 100) : (m.status === 'Approved' ? 100 : 0);
+              return {
+                id: m.id,
+                name: m.title,
+                progress: mProgress,
+                startDate: m.createdAt ? m.createdAt.split('T')[0] : '2026-08-18',
+                dueDate: '2026-12-31',
+                status: m.status === 'Approved' ? 'Completed' : m.status === 'COMPLETED' ? 'Completed' : 'In Progress',
+                deliverables: []
+              };
+            }),
+            documents: (bp.documents || []).map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              type: d.type,
+              uploadedBy: d.ownerId === bp.clientId ? 'Customer' : 'Professional',
+              date: d.createdAt ? d.createdAt.split('T')[0] : '2026-08-18',
+              version: 'v1'
+            })),
+            messages: [],
+            escrow: {
+              total: bp.budget,
+              deposited: bp.budget,
+              released: spent,
+              remaining: bp.budget - spent,
+              pendingRelease: 0,
+              status: 'held' as 'held'
+            }
+          };
+          setProject(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load contractor project details', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProject();
+  }, [projectId]);
 
   const [activeTab, setActiveTab] = useState<'Overview' | 'Milestones' | 'Deliverables' | 'Documents' | 'Messages' | 'Payments'>('Overview');
 
@@ -29,6 +105,14 @@ export const ProProjectWorkspace: React.FC<ProProjectWorkspaceProps> = ({
   
   // Chat state
   const [newMessage, setNewMessage] = useState('');
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-brandLight-border p-12 rounded-3xl text-center space-y-4 shadow-sm text-xs font-bold text-slate-500">
+        Loading contractor workspace...
+      </div>
+    );
+  }
 
   if (!project) {
     return (
