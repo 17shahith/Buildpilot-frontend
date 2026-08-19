@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Cpu, Eye, Sparkles, Shield, Wrench, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { InteractiveGraph } from '../../../components/charts/InteractiveGraph';
+import { motion, useMotionValue, useSpring, useTransform, useInView } from 'framer-motion';
 
 interface LandingPageProps {
   setCurrentView: (view: string) => void;
@@ -10,57 +11,264 @@ interface LandingPageProps {
   setMarketplaceRole: (role: string) => void;
 }
 
+// 3D Tilt Wrapper for Premium depth effect
+const TiltCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [6, -6]), { damping: 20, stiffness: 150 });
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-6, 6]), { damping: 20, stiffness: 150 });
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left - rect.width / 2;
+    const mouseY = event.clientY - rect.top - rect.height / 2;
+    x.set(mouseX / rect.width);
+    y.set(mouseY / rect.height);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d",
+      }}
+      className={className}
+    >
+      <div style={{ transform: "translateZ(10px)" }} className="h-full w-full">
+        {children}
+      </div>
+    </motion.div>
+  );
+};
+
+// Animated Statistics / Steps Number Counter Component
+const AnimatedCounter: React.FC<{ value: number }> = ({ value }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-50px" });
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    let start = 0;
+    const end = value;
+    if (start === end) return;
+
+    const totalDuration = 1000;
+    const incrementTime = Math.max(Math.floor(totalDuration / end), 50);
+
+    const timer = setInterval(() => {
+      start += 1;
+      setCount(start);
+      if (start >= end) {
+        clearInterval(timer);
+      }
+    }, incrementTime);
+
+    return () => clearInterval(timer);
+  }, [inView, value]);
+
+  return <span ref={ref}>{count < 10 ? `0${count}` : count}</span>;
+};
+
 const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentView }) => {
   const navigate = useNavigate();
+
+  // Mouse Parallax values for Hero
+  const heroRef = useRef<HTMLDivElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const handleHeroMouseMove = (e: React.MouseEvent) => {
+    if (!heroRef.current) return;
+    const rect = heroRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    mouseX.set(x);
+    mouseY.set(y);
+  };
+
+  const handleHeroMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
+
+  const bgX = useSpring(useTransform(mouseX, [-0.5, 0.5], [-20, 20]), { damping: 40, stiffness: 80 });
+  const bgY = useSpring(useTransform(mouseY, [-0.5, 0.5], [-20, 20]), { damping: 40, stiffness: 80 });
+
+  const visualX = useSpring(useTransform(mouseX, [-0.5, 0.5], [10, -10]), { damping: 40, stiffness: 80 });
+  const visualY = useSpring(useTransform(mouseY, [-0.5, 0.5], [10, -10]), { damping: 40, stiffness: 80 });
+
+  const textX = useSpring(useTransform(mouseX, [-0.5, 0.5], [-4, 4]), { damping: 40, stiffness: 80 });
+  const textY = useSpring(useTransform(mouseY, [-0.5, 0.5], [-4, 4]), { damping: 40, stiffness: 80 });
+
+  // Entrance variants
+  const heroContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.12 }
+    }
+  };
+
+  const heroItemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.6, ease: [0.25, 1, 0.5, 1] as any }
+    }
+  };
+
+  // Scroll Reveal variants
+  const scrollRevealVariants = {
+    hidden: { opacity: 0, y: 30, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.7, ease: [0.25, 1, 0.5, 1] as any }
+    }
+  };
+
+  // Card stagger reveal variants
+  const cardContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const cardItemVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.97 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.6, ease: [0.25, 1, 0.5, 1] as any }
+    }
+  };
+
   return (
-    <div className="bg-white min-h-screen font-sans text-slate-800">
+    <div className="bg-white min-h-screen font-sans text-slate-800 overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+      <section
+        ref={heroRef}
+        onMouseMove={handleHeroMouseMove}
+        onMouseLeave={handleHeroMouseLeave}
+        className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28"
+      >
+        {/* Subtle decorative background motion particles / glows using existing palette (very light orange/slate glows) */}
+        <motion.div
+          style={{ x: bgX, y: bgY }}
+          className="absolute -top-12 -left-12 w-80 h-80 rounded-full bg-orange-50/40 blur-3xl pointer-events-none -z-10"
+        />
+        <motion.div
+          style={{ x: bgY, y: bgX }}
+          className="absolute bottom-12 right-12 w-96 h-96 rounded-full bg-slate-50/50 blur-3xl pointer-events-none -z-10"
+        />
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left Hero Column */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="flex items-center space-x-2">
-              <span className="w-8 h-0.5 bg-[#F97316]"></span>
+          <motion.div
+            variants={heroContainerVariants}
+            initial="hidden"
+            animate="visible"
+            style={{ x: textX, y: textY }}
+            className="lg:col-span-7 space-y-6"
+          >
+            <motion.div variants={heroItemVariants} className="flex items-center space-x-2">
+              {/* Floating accent line */}
+              <motion.span
+                animate={{ width: [32, 48, 32] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                className="h-0.5 bg-[#F97316]"
+              ></motion.span>
               <span className="text-xs uppercase font-extrabold tracking-widest text-[#F97316]">
                 INTELLIGENT • SECURE • CONNECTED
               </span>
-            </div>
-            <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.1] text-[#0F172A] font-display">
+            </motion.div>
+            
+            <motion.h1 
+              variants={heroItemVariants} 
+              className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.1] text-[#0F172A] font-display"
+            >
               BUILDING A <br />
               SMARTER WAY TO <br />
               <span className="text-[#F97316]">PLAN & VISUALIZE</span>
-            </h1>
-            <p className="text-gray-600 font-medium text-sm sm:text-base max-w-lg leading-relaxed">
+            </motion.h1>
+
+            <motion.p 
+              variants={heroItemVariants} 
+              className="text-gray-600 font-medium text-sm sm:text-base max-w-lg leading-relaxed"
+            >
               Scan spaces in AR, generate instant AI construction estimates, and hire verified property professionals on a single premium escrow-secured platform.
-            </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <button
+            </motion.p>
+
+            <motion.div variants={heroItemVariants} className="flex flex-wrap gap-4 pt-4">
+              <motion.button
                 onClick={() => navigate('/auth')}
-                className="flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-lg shadow-orange-500/10"
+                whileHover={{ y: -2, scale: 1.02, boxShadow: '0 10px 25px -5px rgba(249, 115, 22, 0.25)' }}
+                whileTap={{ scale: 0.98, y: 0 }}
+                className="flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-[#F97316] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-500/10"
               >
                 <span>Get Started</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              <button
+                {/* Micro interaction on Icon */}
+                <motion.div
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </motion.div>
+              </motion.button>
+              
+              <motion.button
                 onClick={() => {
                   document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="flex items-center space-x-2 px-6 py-3.5 rounded-xl border border-gray-300 hover:border-[#F97316] text-gray-700 hover:text-[#F97316] font-bold text-xs uppercase tracking-wider transition-all bg-white"
+                whileHover={{ y: -2, scale: 1.02, boxShadow: '0 10px 20px -5px rgba(0, 0, 0, 0.04)' }}
+                whileTap={{ scale: 0.98, y: 0 }}
+                className="flex items-center space-x-2 px-6 py-3.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs uppercase tracking-wider transition-all bg-white"
               >
                 <span>Explore Features</span>
-              </button>
-            </div>
-          </div>
+              </motion.button>
+            </motion.div>
+          </motion.div>
 
           {/* Right Hero Interactive Graph */}
-          <div className="lg:col-span-5 relative h-[380px] w-full flex justify-center items-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 1, 0.5, 1] as any }}
+            style={{ x: visualX, y: visualY }}
+            className="lg:col-span-5 relative h-[380px] w-full flex justify-center items-center"
+          >
             <InteractiveGraph preset="landing" interactive={true} />
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Features / Modules Section */}
-      <section id="features-section" className="bg-slate-50 py-24 border-t border-slate-100">
+      <motion.section
+        id="features-section"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        variants={scrollRevealVariants}
+        className="bg-slate-50 py-24 border-t border-slate-100"
+      >
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
             <span className="text-xs uppercase font-extrabold tracking-widest text-[#F97316]">
@@ -74,90 +282,124 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <motion.div
+            variants={cardContainerVariants}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
             {/* Feature 1 */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all flex flex-col justify-between h-72 shadow-sm group hover:-translate-y-1">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316]">
-                  <Cpu className="w-6 h-6" />
+            <motion.div variants={cardItemVariants} className="h-72">
+              <TiltCard className="h-full w-full">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                  <div className="space-y-4">
+                    {/* Micro-interaction icon scaling */}
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
+                      <Cpu className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">AI Cost Estimator</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
+                      Instantly compute concrete, steel, and total budget estimates based on floors, materials, and regional index data.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">AI Cost Estimator</h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
-                  Instantly compute concrete, steel, and total budget estimates based on floors, materials, and regional index data.
-                </p>
-              </div>
-            </div>
+              </TiltCard>
+            </motion.div>
 
             {/* Feature 2 */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all flex flex-col justify-between h-72 shadow-sm group hover:-translate-y-1">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316]">
-                  <Eye className="w-6 h-6" />
+            <motion.div variants={cardItemVariants} className="h-72">
+              <TiltCard className="h-full w-full">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
+                      <Eye className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">AR Space Scanner</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
+                      Leverage web-based AR space scanning to dynamically calculate dimensions and preview materials instantly on-device.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">AR Space Scanner</h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
-                  Leverage web-based AR space scanning to dynamically calculate dimensions and preview materials instantly on-device.
-                </p>
-              </div>
-            </div>
+              </TiltCard>
+            </motion.div>
 
             {/* Feature 3 */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all flex flex-col justify-between h-72 shadow-sm group hover:-translate-y-1">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316]">
-                  <Sparkles className="w-6 h-6" />
+            <motion.div variants={cardItemVariants} className="h-72">
+              <TiltCard className="h-full w-full">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">AI Interior Studio</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
+                      Re-imagine rooms and interior designs using intelligent image-to-image neural style transfer.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">AI Interior Studio</h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
-                  Re-imagine rooms and interior designs using intelligent image-to-image neural style transfer.
-                </p>
-              </div>
-            </div>
+              </TiltCard>
+            </motion.div>
 
             {/* Feature 4 */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all flex flex-col justify-between h-72 shadow-sm group hover:-translate-y-1">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316]">
-                  <Wrench className="w-6 h-6" />
+            <motion.div variants={cardItemVariants} className="h-72">
+              <TiltCard className="h-full w-full">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
+                      <Wrench className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">Verified Marketplace</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
+                      Match with licensed, verified structural engineers, architects, and general contractors using regional audit verification.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">Verified Marketplace</h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
-                  Match with licensed, verified structural engineers, architects, and general contractors using regional audit verification.
-                </p>
-              </div>
-            </div>
+              </TiltCard>
+            </motion.div>
 
             {/* Feature 5 */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all flex flex-col justify-between h-72 shadow-sm group hover:-translate-y-1">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316]">
-                  <FileText className="w-6 h-6" />
+            <motion.div variants={cardItemVariants} className="h-72">
+              <TiltCard className="h-full w-full">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">Property Listing Hub</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
+                      Explore and buy or lease verified plots and property structures cataloged with full structural assessments.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">Property Listing Hub</h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
-                  Explore and buy or lease verified plots and property structures cataloged with full structural assessments.
-                </p>
-              </div>
-            </div>
+              </TiltCard>
+            </motion.div>
 
             {/* Feature 6 */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all flex flex-col justify-between h-72 shadow-sm group hover:-translate-y-1">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316]">
-                  <Shield className="w-6 h-6" />
+            <motion.div variants={cardItemVariants} className="h-72">
+              <TiltCard className="h-full w-full">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
+                      <Shield className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">Milestone Escrow Protection</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
+                      Lock and release development funds dynamically based on digital verification parameters of structural progress.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-base font-extrabold tracking-wide uppercase text-[#0F172A]">Milestone Escrow Protection</h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
-                  Lock and release development funds dynamically based on digital verification parameters of structural progress.
-                </p>
-              </div>
-            </div>
-          </div>
+              </TiltCard>
+            </motion.div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Ecosystem Network Section */}
-      <section className="py-20 bg-slate-50 border-t border-b border-slate-100">
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        variants={scrollRevealVariants}
+        className="py-20 bg-slate-50 border-t border-b border-slate-100"
+      >
         <div className="max-w-7xl mx-auto px-6 lg:px-8 space-y-10">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <span className="text-xs uppercase font-extrabold tracking-widest text-[#F97316]">
@@ -174,10 +416,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             <InteractiveGraph preset="landing" />
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* How it Works Section */}
-      <section className="py-24 bg-white">
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        variants={scrollRevealVariants}
+        className="py-24 bg-white"
+      >
         <div className="max-w-7xl mx-auto px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-2">
             <span className="text-xs uppercase font-extrabold tracking-widest text-[#F97316]">
@@ -190,24 +438,40 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             {[
-              { step: '01', title: 'Scope Input', desc: 'Define your area size, floor details, and basic specifications.' },
-              { step: '02', title: 'AI Calculation', desc: 'Our engine parses cost index databases to return instant estimates.' },
-              { step: '03', title: 'AR Spatial Scan', desc: 'Scan interior environments to accurately map material volumes.' },
-              { step: '04', title: 'Match Experts', desc: 'Connect with verified design and construction professionals.' },
-              { step: '05', title: 'Escrow Launch', desc: 'Fund milestones securely and track structural deliverables.' },
+              { step: 1, title: 'Scope Input', desc: 'Define your area size, floor details, and basic specifications.' },
+              { step: 2, title: 'AI Calculation', desc: 'Our engine parses cost index databases to return instant estimates.' },
+              { step: 3, title: 'AR Spatial Scan', desc: 'Scan interior environments to accurately map material volumes.' },
+              { step: 4, title: 'Match Experts', desc: 'Connect with verified design and construction professionals.' },
+              { step: 5, title: 'Escrow Launch', desc: 'Fund milestones securely and track structural deliverables.' },
             ].map((step, i) => (
-              <div key={i} className="space-y-3 relative p-6 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                <span className="text-4xl font-black text-[#F97316]/20 block">{step.step}</span>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="space-y-3 relative p-6 rounded-2xl bg-slate-50 border border-slate-100 text-center hover:shadow-md transition-shadow duration-300"
+              >
+                {/* Stats Counter Animation */}
+                <span className="text-4xl font-black text-[#F97316]/20 block">
+                  <AnimatedCounter value={step.step} />
+                </span>
                 <h4 className="text-sm font-extrabold text-[#0F172A]">{step.title}</h4>
                 <p className="text-xs text-gray-500 leading-relaxed font-semibold">{step.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Security Section */}
-      <section className="bg-slate-50 py-24 border-t border-b border-slate-100">
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        variants={scrollRevealVariants}
+        className="bg-slate-50 py-24 border-t border-b border-slate-100"
+      >
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-5 space-y-4">
@@ -222,13 +486,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
               </p>
             </div>
             <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-2">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-2 hover:shadow-md transition-all duration-300">
                 <h4 className="text-sm font-extrabold text-[#0F172A]">Firebase SSO Protection</h4>
                 <p className="text-xs text-gray-500 font-semibold leading-relaxed">
                   Single Sign-On leveraging secure client credentials avoids credential interception.
                 </p>
               </div>
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-2">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-2 hover:shadow-md transition-all duration-300">
                 <h4 className="text-sm font-extrabold text-[#0F172A]">Scoped Permissions</h4>
                 <p className="text-xs text-gray-500 font-semibold leading-relaxed">
                   Escrow, marketplace, and design assets are isolated based on verified role permissions.
@@ -237,10 +501,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Final CTA */}
-      <section className="py-24 bg-white text-center">
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={scrollRevealVariants}
+        className="py-24 bg-white text-center"
+      >
         <div className="max-w-4xl mx-auto px-6 lg:px-8 space-y-6">
           <h2 className="text-4xl font-black text-[#0F172A]">
             READY TO GET STARTED?
@@ -248,15 +518,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
           <p className="text-gray-500 font-semibold text-sm max-w-md mx-auto">
             Authorize your profile to unlock cost estimation, AR space tools, and verified marketplaces.
           </p>
-          <button
+          <motion.button
             onClick={() => navigate('/auth')}
-            className="inline-flex items-center space-x-2 px-8 py-4 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-lg"
+            whileHover={{ y: -2, scale: 1.02, boxShadow: '0 10px 25px -5px rgba(249, 115, 22, 0.25)' }}
+            whileTap={{ scale: 0.98, y: 0 }}
+            className="inline-flex items-center space-x-2 px-8 py-4 rounded-xl bg-[#F97316] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg"
           >
             <span>Get Started</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            <motion.div
+              animate={{ x: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+            >
+              <ArrowRight className="w-4 h-4" />
+            </motion.div>
+          </motion.button>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 };

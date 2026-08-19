@@ -292,7 +292,10 @@ export const InteractiveGraph: React.FC<InteractiveGraphProps> = ({
 
   return (
     <div className="relative w-full h-full bg-[#FAFAFA] border border-slate-200/80 rounded-3xl overflow-hidden shadow-inner flex flex-col justify-between" ref={containerRef}>
-      {/* CSS Keyframes for dashed line flow */}
+      {/* Premium scanner overlay effect */}
+      <div className="scanner-glow" />
+
+      {/* CSS Keyframes for dashed line flow, floating nodes, and pulsing core */}
       <style>{`
         @keyframes flowDash {
           to {
@@ -301,6 +304,43 @@ export const InteractiveGraph: React.FC<InteractiveGraphProps> = ({
         }
         .flowing-particles {
           animation: flowDash 2.5s infinite linear;
+        }
+        @keyframes floatNodeEven {
+          0%, 100% { transform: translate(-50%, -50%); }
+          50% { transform: translate(-50%, -54%); }
+        }
+        @keyframes floatNodeOdd {
+          0%, 100% { transform: translate(-50%, -50%); }
+          50% { transform: translate(-50%, -46%); }
+        }
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15), 0 0 0 1px rgba(249, 115, 22, 0.1); }
+          50% { box-shadow: 0 4px 20px rgba(249, 115, 22, 0.35), 0 0 0 3px rgba(249, 115, 22, 0.2); }
+        }
+        @keyframes scanLine {
+          0% { transform: translateY(-100%); opacity: 0; }
+          10% { opacity: 0.6; }
+          90% { opacity: 0.6; }
+          100% { transform: translateY(450px); opacity: 0; }
+        }
+        .floating-node-even {
+          animation: floatNodeEven 6s infinite ease-in-out;
+        }
+        .floating-node-odd {
+          animation: floatNodeOdd 7s infinite ease-in-out;
+        }
+        .pulse-node-bp {
+          animation: pulseGlow 3s infinite ease-in-out;
+        }
+        .scanner-glow {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 80px;
+          background: linear-gradient(to bottom, transparent, rgba(249, 115, 22, 0.04), transparent);
+          pointer-events: none;
+          animation: scanLine 6s infinite linear;
+          z-index: 5;
         }
       `}</style>
 
@@ -311,7 +351,7 @@ export const InteractiveGraph: React.FC<InteractiveGraphProps> = ({
 
       {/* Nodes list */}
       <div className="absolute inset-0 z-10 pointer-events-none">
-        {nodes.map((node) => {
+        {nodes.map((node, index) => {
           const isHovered = hoveredNodeId === node.id;
           const isConnected = links.some(l => 
             (l.from === hoveredNodeId && l.to === node.id) || 
@@ -329,10 +369,20 @@ export const InteractiveGraph: React.FC<InteractiveGraphProps> = ({
             borderClass = 'border-primary bg-white text-primary scale-105 shadow-md';
           }
 
+          // Apply floating animation class depending on ID or index
+          let motionAnimationClass = '';
+          if (node.id === 'bp') {
+            motionAnimationClass = 'pulse-node-bp';
+          } else if (index % 2 === 0) {
+            motionAnimationClass = 'floating-node-even';
+          } else {
+            motionAnimationClass = 'floating-node-odd';
+          }
+
           return (
             <div
               key={node.id}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto border rounded-2xl px-3 py-2 flex items-center space-x-2 text-xs font-bold shadow-sm transition-all duration-300 ${borderClass}`}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto border rounded-2xl px-3 py-2 flex items-center space-x-2 text-xs font-bold shadow-sm transition-all duration-300 ${borderClass} ${motionAnimationClass}`}
               style={{ 
                 left: `${node.x}%`, 
                 top: `${node.y}%`,
