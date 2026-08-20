@@ -11,11 +11,13 @@ interface LandingPageProps {
   setMarketplaceRole: (role: string) => void;
 }
 
-// 3D Tilt Wrapper for Premium depth effect
+// 3D Tilt Wrapper for Premium depth effect with dynamic glare reflection
 const TiltCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => {
   const ref = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
+  const [glarePos, setGlarePos] = useState({ x: 50, y: 50 });
+  const [isHovered, setIsHovered] = useState(false);
 
   const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [6, -6]), { damping: 20, stiffness: 150 });
   const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-6, 6]), { damping: 20, stiffness: 150 });
@@ -27,11 +29,17 @@ const TiltCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
     const mouseY = event.clientY - rect.top - rect.height / 2;
     x.set(mouseX / rect.width);
     y.set(mouseY / rect.height);
+    setGlarePos({
+      x: ((event.clientX - rect.left) / rect.width) * 100,
+      y: ((event.clientY - rect.top) / rect.height) * 100
+    });
+    setIsHovered(true);
   };
 
   const handleMouseLeave = () => {
     x.set(0);
     y.set(0);
+    setIsHovered(false);
   };
 
   return (
@@ -44,8 +52,16 @@ const TiltCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
         rotateY,
         transformStyle: "preserve-3d",
       }}
-      className={className}
+      className={`relative overflow-hidden ${className || ''}`}
     >
+      {/* Premium cursor glare reflection overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-10"
+        style={{
+          background: `radial-gradient(circle 140px at ${glarePos.x}% ${glarePos.y}%, rgba(249, 115, 22, 0.12), transparent 75%)`,
+          opacity: isHovered ? 1 : 0
+        }}
+      />
       <div style={{ transform: "translateZ(10px)" }} className="h-full w-full">
         {children}
       </div>
@@ -113,32 +129,32 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
   const textX = useSpring(useTransform(mouseX, [-0.5, 0.5], [-4, 4]), { damping: 40, stiffness: 80 });
   const textY = useSpring(useTransform(mouseY, [-0.5, 0.5], [-4, 4]), { damping: 40, stiffness: 80 });
 
-  // Entrance variants
+  // Entrance variants using premium custom decel cubic bezier
   const heroContainerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.12 }
+      transition: { staggerChildren: 0.1 }
     }
   };
 
   const heroItemVariants = {
-    hidden: { opacity: 0, y: 15 },
+    hidden: { opacity: 0, y: 25 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.6, ease: [0.25, 1, 0.5, 1] as any }
+      transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] as any }
     }
   };
 
-  // Scroll Reveal variants
+  // Scroll Reveal variants with polished vertical translation and scale
   const scrollRevealVariants = {
-    hidden: { opacity: 0, y: 30, scale: 0.98 },
+    hidden: { opacity: 0, y: 40, scale: 0.99 },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: 0.7, ease: [0.25, 1, 0.5, 1] as any }
+      transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] as any }
     }
   };
 
@@ -152,12 +168,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
   };
 
   const cardItemVariants = {
-    hidden: { opacity: 0, y: 20, scale: 0.97 },
+    hidden: { opacity: 0, y: 30, scale: 0.98 },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: 0.6, ease: [0.25, 1, 0.5, 1] as any }
+      transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] as any }
     }
   };
 
