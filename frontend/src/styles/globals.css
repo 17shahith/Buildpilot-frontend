@@ -71,11 +71,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-brandLight-slate;
+  background: #F4F4F6;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-brandLight-border rounded-full hover:bg-primary transition-colors;
+  background: #E2E2E8;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF5722;
 }
 
 /* Animated decorative ring from Ripon's portfolio image */
