@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X, Cpu, Eye, Sparkles, Briefcase, Home, LayoutDashboard, Shield } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -15,8 +15,17 @@ const Navbar: React.FC<NavbarProps> = ({
   setMarketplaceTab,
 }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const isMainApp = location.pathname.startsWith('/main');
   const { user, userRole, logout } = useAuth();
@@ -74,9 +83,13 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-150 shadow-sm transition-colors duration-300">
+    <nav className={`sticky top-0 z-50 border-b transition-all duration-500 ${
+      isScrolled 
+        ? 'bg-white/85 backdrop-blur-lg border-slate-200/60 shadow-md' 
+        : 'bg-white border-gray-150 shadow-sm'
+    }`}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className={`flex items-center justify-between transition-all duration-500 ${isScrolled ? 'h-16' : 'h-20'}`}>
           {/* Logo with BuildCore towers */}
           <div 
             onClick={() => {

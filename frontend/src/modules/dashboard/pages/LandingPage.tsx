@@ -147,6 +147,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
     }
   };
 
+  const heroTextLineVariants = {
+    hidden: { y: "110%" },
+    visible: {
+      y: 0,
+      transition: { duration: 0.95, ease: [0.16, 1, 0.3, 1] as any }
+    }
+  };
+
   // Scroll Reveal variants with polished vertical translation and scale
   const scrollRevealVariants = {
     hidden: { opacity: 0, y: 40, scale: 0.99 },
@@ -196,6 +204,48 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
           className="absolute bottom-12 right-12 w-96 h-96 rounded-full bg-slate-50/50 blur-3xl pointer-events-none -z-10"
         />
 
+        {/* Floating background decorative shape 1: Organic rotating square border */}
+        <motion.div
+          animate={{
+            y: [0, -20, 0],
+            rotate: [0, 360],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute top-1/4 right-1/3 w-16 h-16 rounded-3xl border border-orange-200/25 pointer-events-none -z-10"
+        />
+
+        {/* Floating background decorative shape 2: Drifting glow dot */}
+        <motion.div
+          animate={{
+            x: [0, 30, -30, 0],
+            y: [0, -35, 35, 0],
+          }}
+          transition={{
+            duration: 16,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute bottom-1/4 left-1/4 w-3 h-3 rounded-full bg-[#F97316]/25 pointer-events-none -z-10"
+        />
+
+        {/* Floating background decorative shape 3: Drifting ring */}
+        <motion.div
+          animate={{
+            x: [0, -25, 25, 0],
+            y: [0, 40, -40, 0],
+          }}
+          transition={{
+            duration: 22,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute top-1/3 left-12 w-6 h-6 rounded-full border border-slate-350/40 pointer-events-none -z-10"
+        />
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left Hero Column */}
           <motion.div
@@ -218,12 +268,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             </motion.div>
             
             <motion.h1 
-              variants={heroItemVariants} 
-              className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.1] text-[#0F172A] font-display"
+              className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.1] text-[#0F172A] font-display flex flex-col space-y-1 sm:space-y-2"
             >
-              BUILDING A <br />
-              SMARTER WAY TO <br />
-              <span className="text-[#F97316]">PLAN & VISUALIZE</span>
+              <div className="overflow-hidden block w-full">
+                <motion.span className="block" variants={heroTextLineVariants} initial="hidden" animate="visible">BUILDING A</motion.span>
+              </div>
+              <div className="overflow-hidden block w-full">
+                <motion.span className="block" variants={heroTextLineVariants} initial="hidden" animate="visible">SMARTER WAY TO</motion.span>
+              </div>
+              <div className="overflow-hidden block w-full">
+                <motion.span className="block text-[#F97316]" variants={heroTextLineVariants} initial="hidden" animate="visible">PLAN & VISUALIZE</motion.span>
+              </div>
             </motion.h1>
 
             <motion.p 
@@ -236,8 +291,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             <motion.div variants={heroItemVariants} className="flex flex-wrap gap-4 pt-4">
               <motion.button
                 onClick={() => navigate('/auth')}
-                whileHover={{ y: -2, scale: 1.02, boxShadow: '0 10px 25px -5px rgba(249, 115, 22, 0.25)' }}
-                whileTap={{ scale: 0.98, y: 0 }}
+                whileHover={{ y: -3, scale: 1.025, boxShadow: '0 12px 30px -5px rgba(249, 115, 22, 0.35)' }}
+                whileTap={{ scale: 0.96 }}
                 className="flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-[#F97316] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-orange-500/10"
               >
                 <span>Get Started</span>
@@ -254,8 +309,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
                 onClick={() => {
                   document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                whileHover={{ y: -2, scale: 1.02, boxShadow: '0 10px 20px -5px rgba(0, 0, 0, 0.04)' }}
-                whileTap={{ scale: 0.98, y: 0 }}
+                whileHover={{ y: -3, scale: 1.025, boxShadow: '0 12px 25px -5px rgba(0, 0, 0, 0.08)' }}
+                whileTap={{ scale: 0.96 }}
                 className="flex items-center space-x-2 px-6 py-3.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs uppercase tracking-wider transition-all bg-white"
               >
                 <span>Explore Features</span>
@@ -281,7 +336,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
         id="features-section"
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
+        viewport={{ once: true, amount: 0.15 }}
         variants={scrollRevealVariants}
         className="bg-slate-50 py-24 border-t border-slate-100"
       >
@@ -412,7 +467,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
       <motion.section
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
+        viewport={{ once: true, amount: 0.15 }}
         variants={scrollRevealVariants}
         className="py-20 bg-slate-50 border-t border-b border-slate-100"
       >
@@ -438,7 +493,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
       <motion.section
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
+        viewport={{ once: true, amount: 0.15 }}
         variants={scrollRevealVariants}
         className="py-24 bg-white"
       >
@@ -484,7 +539,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
       <motion.section
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
+        viewport={{ once: true, amount: 0.15 }}
         variants={scrollRevealVariants}
         className="bg-slate-50 py-24 border-t border-b border-slate-100"
       >
