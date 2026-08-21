@@ -19,9 +19,15 @@ const Navbar: React.FC<NavbarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [scrollProgress, setScrollProgress] = useState(0);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        setScrollProgress((window.scrollY / totalHeight) * 100);
+      }
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -224,6 +230,13 @@ const Navbar: React.FC<NavbarProps> = ({
             ))
           )}
         </div>
+      )}
+      {/* Scroll Progress Bar */}
+      {!isMainApp && (
+        <div 
+          className="absolute bottom-0 left-0 h-[2.5px] bg-[#F97316] transition-all duration-75 ease-out pointer-events-none"
+          style={{ width: `${scrollProgress}%` }}
+        />
       )}
     </nav>
   );

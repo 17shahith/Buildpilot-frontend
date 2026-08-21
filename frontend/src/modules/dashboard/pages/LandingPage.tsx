@@ -360,7 +360,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             {/* Feature 1 */}
             <motion.div variants={cardItemVariants} className="h-72">
               <TiltCard className="h-full w-full">
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all duration-300 transform group-hover:-translate-y-1.5 flex flex-col justify-between h-full shadow-sm hover:shadow-xl group">
                   <div className="space-y-4">
                     {/* Micro-interaction icon scaling */}
                     <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
@@ -378,7 +378,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             {/* Feature 2 */}
             <motion.div variants={cardItemVariants} className="h-72">
               <TiltCard className="h-full w-full">
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all duration-300 transform group-hover:-translate-y-1.5 flex flex-col justify-between h-full shadow-sm hover:shadow-xl group">
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
                       <Eye className="w-6 h-6" />
@@ -395,7 +395,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             {/* Feature 3 */}
             <motion.div variants={cardItemVariants} className="h-72">
               <TiltCard className="h-full w-full">
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all duration-300 transform group-hover:-translate-y-1.5 flex flex-col justify-between h-full shadow-sm hover:shadow-xl group">
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
                       <Sparkles className="w-6 h-6" />
@@ -412,7 +412,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             {/* Feature 4 */}
             <motion.div variants={cardItemVariants} className="h-72">
               <TiltCard className="h-full w-full">
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all duration-300 transform group-hover:-translate-y-1.5 flex flex-col justify-between h-full shadow-sm hover:shadow-xl group">
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
                       <Wrench className="w-6 h-6" />
@@ -429,7 +429,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             {/* Feature 5 */}
             <motion.div variants={cardItemVariants} className="h-72">
               <TiltCard className="h-full w-full">
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all duration-300 transform group-hover:-translate-y-1.5 flex flex-col justify-between h-full shadow-sm hover:shadow-xl group">
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
                       <FileText className="w-6 h-6" />
@@ -446,7 +446,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setCurrentView: _setCurrentVi
             {/* Feature 6 */}
             <motion.div variants={cardItemVariants} className="h-72">
               <TiltCard className="h-full w-full">
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-colors flex flex-col justify-between h-full shadow-sm hover:shadow-lg group">
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[#F97316] transition-all duration-300 transform group-hover:-translate-y-1.5 flex flex-col justify-between h-full shadow-sm hover:shadow-xl group">
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#F97316] group-hover:scale-110 transition-transform duration-300">
                       <Shield className="w-6 h-6" />
